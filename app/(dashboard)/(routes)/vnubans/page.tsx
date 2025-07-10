@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Download } from 'lucide-react'
 import React, {useState} from 'react'
 import { MetricCard } from './_components/MetricCard';
-// import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ExportModal } from '../dashboard/_components/ExportModal';
 import { FiUserPlus } from "react-icons/fi";
 import VnubanChart from './_components/VnubanChart';
+import VNUBANTable from './_components/VNUBANTable';
 
 
 interface DashboardMetric {
@@ -100,11 +101,11 @@ export default function VnubanPage() {
                 <div>
             <VnubanChart />
           </div>
-          {/* <Card >
+          <Card >
       <CardContent>
-      <TransactionTable />
+      <VNUBANTable />
       </CardContent>
-      </Card> */}
+      </Card>
           </div>
           </div>
              <ExportModal
