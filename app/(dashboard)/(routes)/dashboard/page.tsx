@@ -33,7 +33,7 @@ export default function DashboardPage() {
       period: 'Last 30 days'
     },
     {
-      id: 'pending-notifications',
+      id: 'generated-vnubans',
       title: 'Generated vNUBANs',
       value: '0',
       change: 22.7,
@@ -41,7 +41,7 @@ export default function DashboardPage() {
       period: 'Last 30 days'
     },
     {
-      id: 'successful-amount',
+      id: 'processed-transactions',
       title: 'Processed Transactions Value',
       value: '₦0',
       change: 22.7,
@@ -49,7 +49,7 @@ export default function DashboardPage() {
       period: 'Last 30 days'
     },
     {
-      id: 'payouts-processed',
+      id: 'active-vnubans',
       title: 'Active vNUBANs',
       value: '₦0',
       change: 22.7,
