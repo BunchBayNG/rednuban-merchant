@@ -26,70 +26,149 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Filter,  ChevronLeft, ChevronRight, View, Download } from "lucide-react";
-import { useState, useMemo } from "react";
+import { Filter, ChevronLeft, ChevronRight, View, Download, CalendarIcon } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@radix-ui/react-popover";
+import { Calendar } from "@/components/ui/calendar";
+import { useState, useEffect } from "react";
 import { BsThreeDots } from "react-icons/bs";
-import { transactionData } from "@/lib/mockData";
 import Empty from "@/components/svg Icons/Empty";
 import TransactionDetailsModal from "./TransactionsDetailsModal";
+import Loading from "@/components/Loading";
 
 interface Transaction {
   sN: number;
-  merchant: string;
-  vNUBAN: string;
+  id: number;
+  transactionId: string;
+  merchantName: string;
+  merchantOrgId: string;
+  vnuban: string;
   amount: number;
   status: string;
-  transactionID: string;
-  webhookStatus: string | number;
-  timestamp: string;
-  sessionID: string;
+  sessionId: string;
   reference: string;
+  webhookStatus: string;
   transactionType: string;
-  destination: {
-    accountNumber: string;
-    bank: string;
-    name: string;
-  };
+  destinationAccountNumber: string;
+  destinationAccountName: string;
+  destinationBankName: string;
   ipAddress: string;
-  deviceInfo: string;
-  processingTime: string;
-  lastUpdated: string;
-  email: string;
+  deviceName: string;
+  processingTime: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface TransactionResponse {
+  statusCode: number;
+  status: boolean;
+  message: string;
+  data: {
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    content: Transaction[];
+    number: number;
+    first: boolean;
+    last: boolean;
+  };
 }
 
 export default function TransactionTable() {
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 10;
-
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filter, setFilter] = useState({
+    transactionId: "",
+    merchantName: "",
+    merchantOrgId: "",
+    vnuban: "",
+    startDate: "",
+    endDate: "",
+    status: "",
+    sortBy: "createdAt",
+    sortOrder: "asc",
+  });
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
-  const filteredTransactions = useMemo(() => {
-    return transactionData
-      .filter((tx) => {
-        const matchesSearch =
-          tx.merchant.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          tx.vNUBAN.includes(searchTerm) ||
-          tx.transactionID.toLowerCase().includes(searchTerm.toLowerCase());
+  const fetchTransactions = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params: Record<string, string> = {
+        page: currentPage.toString(),
+        size: pageSize.toString(),
+        sortBy: filter.sortBy || "createdAt",
+        sortOrder: filter.sortOrder || "asc",
+      };
+      if (filter.transactionId) params.transactionId = filter.transactionId;
+      if (filter.merchantName || searchTerm) params.merchantName = filter.merchantName || searchTerm;
+      if (filter.merchantOrgId) params.merchantOrgId = filter.merchantOrgId;
+      if (filter.vnuban) params.vnuban = filter.vnuban;
+      if (filter.startDate) params.startDate = filter.startDate;
+      if (filter.endDate) params.endDate = filter.endDate;
+      if (filter.status) params.status = filter.status;
 
-        const matchesStatus = filterStatus ? tx.status.toLowerCase() === filterStatus.toLowerCase() : true;
+      const queryString = new URLSearchParams(params).toString();
+      console.log("Frontend Request URL:", `/api/reports/transactions?${queryString}`);
+      const res = await fetch(`/api/reports/transactions?${queryString}`);
+      const data: TransactionResponse = await res.json();
+      console.log("API Response:", JSON.stringify(data, null, 2));
 
-        return matchesSearch && matchesStatus;
-      });
-  }, [searchTerm, filterStatus]);
-
-  const paginatedTransactions = useMemo(() => {
-    const start = currentPage * pageSize;
-    return filteredTransactions.slice(start, start + pageSize);
-  }, [filteredTransactions, currentPage]);
-
-  const totalPages = Math.ceil(filteredTransactions.length / pageSize);
-
-  const getInitials = (name: string) => {
-    const names = name.split(" ");
-    return names.length > 1 ? names[0][0] + names[names.length - 1][0] : names[0][0];
+      if (data.status) {
+        const mappedTransactions = data.data.content.map((t, index) => ({
+          sN: data.data.number * pageSize + index + 1,
+          id: t.id || 0,
+          transactionId: t.transactionId || "",
+          merchantName: t.merchantName || "",
+          merchantOrgId: t.merchantOrgId || "",
+          vnuban: t.vnuban || "",
+          amount: t.amount || 0,
+          status: t.status || "",
+          sessionId: t.sessionId || "",
+          reference: t.reference || "",
+          webhookStatus: t.webhookStatus || "",
+          transactionType: t.transactionType || "",
+          destinationAccountNumber: t.destinationAccountNumber || "",
+          destinationAccountName: t.destinationAccountName || "",
+          destinationBankName: t.destinationBankName || "",
+          ipAddress: t.ipAddress || "",
+          deviceName: t.deviceName || "",
+          processingTime: t.processingTime || 0,
+          createdAt: t.createdAt
+            ? new Date(t.createdAt).toLocaleString("en-US", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "",
+          updatedAt: t.updatedAt || "",
+        }));
+        setTransactions(mappedTransactions);
+        setTotalPages(data.data.totalPages);
+        setTotalElements(data.data.totalElements);
+      } else {
+        setError(data.message || "Failed to fetch transactions");
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      setError("Failed to fetch transactions");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [currentPage, filter, searchTerm]);
+
+  // const paginatedTransactions = useMemo(() => transactions, [transactions]);
 
   const getPageNumbers = () => {
     const pages = [];
@@ -105,8 +184,86 @@ export default function TransactionTable() {
     return pages;
   };
 
+  const getInitials = (name: string) => {
+    const names = name.split(" ");
+    return names.length > 1 ? names[0][0] + names[names.length - 1][0] : names[0][0];
+  };
+
+  const handleResetDate = () => setFilter((prev) => ({ ...prev, startDate: "", endDate: "" }));
+  const handleResetVNUBAN = () => setFilter((prev) => ({ ...prev, vnuban: "" }));
+  const handleResetStatus = () => setFilter((prev) => ({ ...prev, status: "" }));
+  const handleResetSort = () => setFilter((prev) => ({ ...prev, sortBy: "createdAt", sortOrder: "asc" }));
+  const handleResetAll = () =>
+    setFilter({
+      transactionId: "",
+      merchantName: "",
+      merchantOrgId: "",
+      vnuban: "",
+      startDate: "",
+      endDate: "",
+      status: "",
+      sortBy: "createdAt",
+      sortOrder: "asc",
+    });
+
+  const handleApplyFilters = () => {
+    // Filtering handled by API
+  };
+
+  function DatePicker({
+    id,
+    date,
+    onSelect,
+    placeholder,
+  }: {
+    id: string;
+    date: string;
+    onSelect: (date: string) => void;
+    placeholder: string;
+  }) {
+    const [open, setOpen] = useState(false);
+    const [month, setMonth] = useState<Date | undefined>(date ? new Date(date) : undefined);
+
+    const handleSelect = (selectedDate: Date | undefined) => {
+      onSelect(selectedDate ? selectedDate.toISOString().split("T")[0] : "");
+      if (selectedDate) setMonth(selectedDate);
+      setOpen(false);
+    };
+
+    return (
+      <div className="flex flex-col gap-1">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              id={id}
+              variant="outline"
+              className="w-full justify-start text-left font-normal pl-3 pr-10 py-2 border rounded-md text-sm bg-[#F8F8F8] dark:bg-gray-700"
+            >
+              <span>
+                {date
+                  ? new Date(date).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })
+                  : placeholder}
+              </span>
+              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 z-30" align="start">
+            <Calendar
+              mode="single"
+              selected={date ? new Date(date) : undefined}
+              onSelect={handleSelect}
+              month={month}
+              className="rounded-md border"
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full relative">
+      {error && <div className="text-red-500 text-center my-4">{error}</div>}
       <div className="flex justify-between items-center mb-4 space-x-4">
         <div className="flex items-center space-x-4">
           <DropdownMenu>
@@ -116,19 +273,181 @@ export default function TransactionTable() {
                 <span>Filter</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48 bg-white dark:bg-background border rounded-lg shadow-lg p-4">
-              <DropdownMenuLabel>Status</DropdownMenuLabel>
+            <DropdownMenuContent className="w-84 bg-white dark:bg-background border rounded-lg shadow-lg p-4">
+              <DropdownMenuLabel>Filter</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value)}>
-                <SelectTrigger className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded">
-                  <SelectValue placeholder="Select Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Successful">Successful</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-4">
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Date Range</label>
+                    <Button variant="link" className="text-red-500 p-0 h-auto" onClick={handleResetDate}>
+                      Reset
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <label htmlFor="start-date" className="text-xs text-gray-400 dark:text-gray-100">
+                        From:
+                      </label>
+                      <DatePicker
+                        id="start-date"
+                        date={filter.startDate}
+                        onSelect={(date) => setFilter((prev) => ({ ...prev, startDate: date }))}
+                        placeholder="YY/MM/DD"
+                      />
+                    </div>
+                    <div className="relative flex-1">
+                      <label htmlFor="end-date" className="text-xs text-gray-400 dark:text-gray-100">
+                        To:
+                      </label>
+                      <DatePicker
+                        id="end-date"
+                        date={filter.endDate}
+                        onSelect={(date) => setFilter((prev) => ({ ...prev, endDate: date }))}
+                        placeholder="YY/MM/DD"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Transaction ID</label>
+                    <Button
+                      variant="link"
+                      className="text-red-500 p-0 h-auto"
+                      onClick={() => setFilter((prev) => ({ ...prev, transactionId: "" }))}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Input
+                    value={filter.transactionId}
+                    onChange={(e) => setFilter((prev) => ({ ...prev, transactionId: e.target.value }))}
+                    placeholder="Transaction ID"
+                    className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Merchant Name</label>
+                    <Button
+                      variant="link"
+                      className="text-red-500 p-0 h-auto"
+                      onClick={() => setFilter((prev) => ({ ...prev, merchantName: "" }))}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Input
+                    value={filter.merchantName}
+                    onChange={(e) => setFilter((prev) => ({ ...prev, merchantName: e.target.value }))}
+                    placeholder="Merchant Name"
+                    className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Merchant Org ID</label>
+                    <Button
+                      variant="link"
+                      className="text-red-500 p-0 h-auto"
+                      onClick={() => setFilter((prev) => ({ ...prev, merchantOrgId: "" }))}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Input
+                    value={filter.merchantOrgId}
+                    onChange={(e) => setFilter((prev) => ({ ...prev, merchantOrgId: e.target.value }))}
+                    placeholder="Merchant Org ID"
+                    className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">vNUBAN</label>
+                    <Button variant="link" className="text-red-500 p-0 h-auto" onClick={handleResetVNUBAN}>
+                      Reset
+                    </Button>
+                  </div>
+                  <Input
+                    value={filter.vnuban}
+                    onChange={(e) => setFilter((prev) => ({ ...prev, vnuban: e.target.value }))}
+                    placeholder="vNUBAN"
+                    className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Status</label>
+                    <Button variant="link" className="text-red-500 p-0 h-auto" onClick={handleResetStatus}>
+                      Reset
+                    </Button>
+                  </div>
+                  <Select
+                    value={filter.status}
+                    onValueChange={(value) => setFilter((prev) => ({ ...prev, status: value }))}
+                  >
+                    <SelectTrigger className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded">
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Successful">
+                        <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: "#4CAF50" }} />
+                        Successful
+                      </SelectItem>
+                      <SelectItem value="Pending">
+                        <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: "#FF8C00" }} />
+                        Pending
+                      </SelectItem>
+                      <SelectItem value="Failed">
+                        <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: "#FF4444" }} />
+                        Failed
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Sort By</label>
+                    <Button variant="link" className="text-red-500 p-0 h-auto" onClick={handleResetSort}>
+                      Reset
+                    </Button>
+                  </div>
+                  <Select
+                    value={filter.sortBy + (filter.sortOrder === "asc" ? "" : "Desc")}
+                    onValueChange={(value) =>
+                      setFilter((prev) => ({
+                        ...prev,
+                        sortBy: value.includes("Desc") ? value.replace("Desc", "") : value,
+                        sortOrder: value.includes("Desc") ? "desc" : "asc",
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded">
+                      <SelectValue placeholder="Sort By" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="createdAt">Created At (Asc)</SelectItem>
+                      <SelectItem value="createdAtDesc">Created At (Desc)</SelectItem>
+                      <SelectItem value="merchantName">Merchant Name (Asc)</SelectItem>
+                      <SelectItem value="merchantNameDesc">Merchant Name (Desc)</SelectItem>
+                      <SelectItem value="amount">Amount (Asc)</SelectItem>
+                      <SelectItem value="amountDesc">Amount (Desc)</SelectItem>
+                      <SelectItem value="status">Status (Asc)</SelectItem>
+                      <SelectItem value="statusDesc">Status (Desc)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-between mt-4">
+                  <Button variant="outline" onClick={handleResetAll}>
+                    Reset All
+                  </Button>
+                  <Button className="bg-red-500 text-white hover:bg-red-600" onClick={handleApplyFilters}>
+                    Apply Now
+                  </Button>
+                </div>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -206,18 +525,24 @@ export default function TransactionTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedTransactions.length > 0 ? (
-            paginatedTransactions.map((item) => (
-              <TableRow key={item.transactionID}>
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={8}>
+               <Loading/>
+              </TableCell>
+            </TableRow>
+          ) : transactions.length > 0 ? (
+            transactions.map((item) => (
+              <TableRow key={item.transactionId}>
                 <TableCell>{item.sN}</TableCell>
                 <TableCell className="flex items-center space-x-2">
                   <Avatar>
                     <AvatarImage src="/images/avatar-placeholder.jpg" alt="Avatar" />
-                    <AvatarFallback>{getInitials(item.merchant)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(item.merchantName)}</AvatarFallback>
                   </Avatar>
-                  <span>{item.merchant}</span>
+                  <span>{item.merchantName}</span>
                 </TableCell>
-                <TableCell>{item.vNUBAN}</TableCell>
+                <TableCell>{item.vnuban}</TableCell>
                 <TableCell>₦{item.amount.toLocaleString()}</TableCell>
                 <TableCell>
                   <span className="flex items-center">
@@ -225,7 +550,7 @@ export default function TransactionTable() {
                       className="w-2 h-2 rounded-full mr-2"
                       style={{
                         backgroundColor:
-                          item.status === "Successful"
+                          item.status === "SUCCESS"
                             ? "#4CAF50"
                             : item.status === "Pending"
                             ? "#FF8C00"
@@ -235,7 +560,7 @@ export default function TransactionTable() {
                     <span
                       style={{
                         color:
-                          item.status === "Successful"
+                          item.status === "SUCCESS"
                             ? "#4CAF50"
                             : item.status === "Pending"
                             ? "#FF8C00"
@@ -246,8 +571,8 @@ export default function TransactionTable() {
                     </span>
                   </span>
                 </TableCell>
-                <TableCell>{item.transactionID}</TableCell>
-                <TableCell>{item.timestamp}</TableCell>
+                <TableCell>{item.transactionId}</TableCell>
+                <TableCell>{item.createdAt}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -285,19 +610,19 @@ export default function TransactionTable() {
         onClose={() => setSelectedTransaction(null)}
         transaction={selectedTransaction}
         setSelectedTransaction={setSelectedTransaction}
-        transactions={transactionData}
+        transactions={transactions}
         currentPage={currentPage}
-        totalElements={transactionData.length}
+        totalElements={totalElements}
         filters={{
-          transactionId: '',
-          merchantName: '',
-          merchantOrgId: '',
-          vnuban: '',
-          startDate: '',
-          endDate: '',
-          status: filterStatus,
-          sortBy: '',
-          sortOrder: '',
+          transactionId: filter.transactionId,
+          merchantName: filter.merchantName,
+          merchantOrgId: filter.merchantOrgId,
+          vnuban: filter.vnuban,
+          startDate: filter.startDate,
+          endDate: filter.endDate,
+          status: filter.status,
+          sortBy: filter.sortBy,
+          sortOrder: filter.sortOrder,
           searchTerm,
         }}
       />

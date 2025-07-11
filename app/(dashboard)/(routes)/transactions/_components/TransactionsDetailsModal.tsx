@@ -16,26 +16,25 @@ import Retry from "@/components/svg Icons/Retry";
 
 interface Transaction {
   sN: number;
-  merchant: string;
-  vNUBAN: string;
+  id: number;
+  transactionId: string;
+  merchantName: string;
+  merchantOrgId: string;
+  vnuban: string;
   amount: number;
   status: string;
-  transactionID: string;
-  webhookStatus: string | number;
-  timestamp: string;
-  sessionID: string;
+  sessionId: string;
   reference: string;
+  webhookStatus: string;
   transactionType: string;
-  destination: {
-    accountNumber: string;
-    bank: string;
-    name: string;
-  };
+  destinationAccountNumber: string;
+  destinationAccountName: string;
+  destinationBankName: string;
   ipAddress: string;
-  deviceInfo: string;
-  processingTime: string;
-  lastUpdated: string;
-  email: string;
+  deviceName: string;
+  processingTime: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface TransactionDetailsModalProps {
@@ -76,8 +75,8 @@ export default function TransactionDetailsModal({
 
   const handleExportDetails = () => {
     try {
-      toast.success(`Export successful for Transaction ID ${transaction.transactionID}! Check your downloads.`);
-      console.log(`Mock export for Transaction ID ${transaction.transactionID}`);
+      toast.success(`Export successful for Transaction ID ${transaction.transactionId}! Check your downloads.`);
+      console.log(`Mock export for Transaction ID ${transaction.transactionId}`);
       onClose();
     } catch (error) {
       toast.error("Export failed. Please try again later.");
@@ -87,12 +86,12 @@ export default function TransactionDetailsModal({
 
   const handleRetry = () => {
     if (transaction.status === "Failed") {
-      toast.success(`Retry initiated for Transaction ID ${transaction.transactionID}`);
-      console.log(`Retry attempted for Transaction ID ${transaction.transactionID}`);
+      toast.success(`Retry initiated for Transaction ID ${transaction.transactionId}`);
+      console.log(`Retry attempted for Transaction ID ${transaction.transactionId}`);
     }
   };
 
-  const currentIndex = transactions.findIndex((t) => t.transactionID === transaction.transactionID);
+  const currentIndex = transactions.findIndex((t) => t.transactionId === transaction.transactionId);
   const prevTransaction = currentIndex > 0 ? transactions[currentIndex - 1] : null;
   const nextTransaction = currentIndex < transactions.length - 1 ? transactions[currentIndex + 1] : null;
 
@@ -134,7 +133,7 @@ export default function TransactionDetailsModal({
           </div>
           <div className="flex justify-between border-b border-[#F8F8F8] dark:border-[#2A2A2A] py-3">
             <span className="text-red-500 font-medium text-sm">
-              Transaction ID: <span className="text-primary text-sm font-light">{transaction.transactionID}</span>
+              Transaction ID: <span className="text-primary text-sm font-light">{transaction.transactionId}</span>
             </span>
             <div className="flex space-x-2">
               <Button variant="ghost" size="icon" onClick={handlePrev} disabled={!prevTransaction}>
@@ -152,11 +151,11 @@ export default function TransactionDetailsModal({
               <div className="flex items-center gap-2">
                 <Avatar className="w-13 h-13">
                   <AvatarImage src="/images/avatar-placeholder.jpg" alt="Merchant Avatar" />
-                  <AvatarFallback>{getInitials(transaction.merchant)}</AvatarFallback>
+                  <AvatarFallback>{getInitials(transaction.merchantName)}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium text-sm">{transaction.merchant}</p>
-                  <p className="text-xs text-gray-500">N/A</p>
+                  <p className="font-medium text-sm">{transaction.merchantName}</p>
+                  <p className="text-xs text-gray-500">{transaction.merchantOrgId || "N/A"}</p>
                 </div>
               </div>
               <div className="flex gap-3 items-center">
@@ -172,7 +171,7 @@ export default function TransactionDetailsModal({
                       <Vnu /> Log Audit Trail
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleExportDetails}>
-                       Export Details
+                      Export Details
                     </DropdownMenuItem>
                     {transaction.status === "Failed" && (
                       <DropdownMenuItem onClick={handleRetry}>
@@ -186,7 +185,7 @@ export default function TransactionDetailsModal({
             <div className="flex justify-between text-sm border-b border-[#F8F8F8] dark:border-[#2A2A2A] pb-1">
               <div className="flex flex-col gap-2">
                 <span className="text-xs text-gray-500">vNUBAN</span>
-                <span>{transaction.vNUBAN}</span>
+                <span>{transaction.vnuban}</span>
               </div>
               <div className="flex flex-col gap-2">
                 <span className="text-xs text-gray-500">Amount</span>
@@ -197,7 +196,7 @@ export default function TransactionDetailsModal({
                 <span
                   style={{
                     color:
-                      transaction.status === "Successful"
+                      transaction.status === "SUCCESS"
                         ? "#4CAF50"
                         : transaction.status === "Pending"
                         ? "#FF8C00"
@@ -209,7 +208,7 @@ export default function TransactionDetailsModal({
               </div>
               <div className="flex flex-col gap-2">
                 <span className="text-xs text-gray-500">Created At</span>
-                <span>{transaction.timestamp} WAT</span>
+                <span>{transaction.createdAt} WAT</span>
               </div>
             </div>
           </div>
@@ -219,7 +218,7 @@ export default function TransactionDetailsModal({
             <div className="flex flex-col gap-4 text-sm">
               <span className="flex gap-2 border-b border-[#F8F8F8] dark:border-[#2A2A2A] pb-2">
                 <p className="font-medium">Session ID:</p>
-                <p>{transaction.sessionID || "N/A"}</p>
+                <p>{transaction.sessionId || "N/A"}</p>
               </span>
               <span className="flex gap-2 border-b border-[#F8F8F8] dark:border-[#2A2A2A] pb-2">
                 <p className="font-medium">Reference:</p>
@@ -236,9 +235,9 @@ export default function TransactionDetailsModal({
               <span className="flex gap-2">
                 <p className="font-medium">Destination:</p>
                 <span className="flex gap-4">
-                  <p>{transaction.destination.accountNumber || "N/A"}</p>
-                  <p>{transaction.destination.bank || "N/A"}</p>
-                  <p>{transaction.destination.name || "N/A"}</p>
+                  <p>{transaction.destinationAccountNumber || "N/A"}</p>
+                  <p>{transaction.destinationBankName || "N/A"}</p>
+                  <p>{transaction.destinationAccountName || "N/A"}</p>
                 </span>
               </span>
             </div>
@@ -253,7 +252,7 @@ export default function TransactionDetailsModal({
               </span>
               <span className="flex gap-2">
                 <p className="font-medium">Device Info:</p>
-                <span>{transaction.deviceInfo || "N/A"}</span>
+                <span>{transaction.deviceName || "N/A"}</span>
               </span>
               <span className="flex gap-2">
                 <p className="font-medium">Processing Time:</p>
@@ -267,7 +266,7 @@ export default function TransactionDetailsModal({
             <div>
               <span className="flex gap-2">
                 <p className="font-medium">Last Updated:</p>
-                <span>{transaction.lastUpdated || transaction.timestamp}</span>
+                <span>{transaction.updatedAt || transaction.createdAt}</span>
               </span>
             </div>
           </div>
