@@ -43,21 +43,41 @@ export default function PayoutDetailsModal({ isOpen, onClose, payout, setSelecte
     return names.length > 1 ? names[0][0] + names[names.length - 1][0] : names[0][0];
   };
 
-  const handleExportDetails = () => {
+  const handleExportDetails = async () => {
     try {
+      const response = await fetch(`/api/export-payout?payoutId=${payout.payoutId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) throw new Error("Export failed");
       toast.success(`Export successful for Payout ID ${payout.payoutId}! Check your downloads.`);
-      console.log(`Mock export for Payout ID ${payout.payoutId}`);
+      console.log(`Export request for Payout ID ${payout.payoutId}`);
       onClose();
     } catch (error) {
       toast.error("Export failed. Please try again later.");
-      console.error(error);
+      console.error("Export Error:", error);
     }
   };
 
-  const handleRetry = () => {
+  const handleRetry = async () => {
     if (payout.status === "Failed") {
-      toast.success(`Retry initiated for Payout ID ${payout.payoutId}`);
-      console.log(`Retry attempted for Payout ID ${payout.payoutId}`);
+      try {
+        const response = await fetch(`/api/retry-payout?payoutId=${payout.payoutId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) throw new Error("Retry failed");
+        toast.success(`Retry initiated for Payout ID ${payout.payoutId}`);
+        console.log(`Retry request for Payout ID ${payout.payoutId}`);
+        // Optionally refetch payouts or update state here
+      } catch (error) {
+        toast.error("Retry failed. Please try again later.");
+        console.error("Retry Error:", error);
+      }
     }
   };
 

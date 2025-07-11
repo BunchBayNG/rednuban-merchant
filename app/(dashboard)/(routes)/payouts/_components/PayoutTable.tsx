@@ -14,6 +14,8 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -24,13 +26,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Filter, Search, ChevronLeft, ChevronRight, Download, Eye } from "lucide-react";
-import { useState, useMemo } from "react";
+import { Filter, Search, ChevronLeft, ChevronRight, Download, Eye, CalendarIcon } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { BsThreeDots } from "react-icons/bs";
 import Retry from "@/components/svg Icons/Retry";
 import Empty from "@/components/svg Icons/Empty";
-import { payoutsData } from "@/lib/mockData";
 import PayoutDetailsModal from "./PayoutDetailsModal";
+import Loading from "@/components/Loading";
+import { Popover, PopoverTrigger, PopoverContent } from "@radix-ui/react-popover";
+import { Calendar } from "@/components/ui/calendar";
 
 interface Payout {
   sN: number;
@@ -46,30 +50,124 @@ interface Payout {
   updatedAt: string;
 }
 
+interface PayoutResponse {
+  statusCode: number;
+  status: boolean;
+  message: string;
+  data: {
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    content: {
+      id: number;
+      firstName: string;
+      amount: number;
+      merchantOrgId: string;
+      lastName: string;
+      vnuban: string;
+      status: string;
+      createdAt: string;
+      updatedAt: string;
+    }[];
+    number: number;
+    first: boolean;
+    last: boolean;
+  };
+}
+
 export default function PayoutTable() {
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 10;
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filter, setFilter] = useState({
+    recipientName: "",
+    vNUBAN: "",
+    transactionRef: "",
+    paymentReference: "",
+    merchantOrgId: "",
+    startDate: "",
+    endDate: "",
+    status: "",
+    sortBy: "createdAt",
+    ascending: true,
+  });
+  const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedPayout, setSelectedPayout] = useState<Payout | null>(null);
 
-  const filteredPayouts = useMemo(() => {
-    return payoutsData.filter((payouts) => {
-      const matchesSearch =
-        payouts.recipientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payouts.vNUBAN.includes(searchTerm) ||
-        payouts.status.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus ? payouts.status.toLowerCase() === filterStatus.toLowerCase() : true;
-      return matchesSearch && matchesStatus;
-    });
-  }, [searchTerm, filterStatus]);
+  const fetchPayouts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        size: pageSize.toString(),
+        sortBy: filter.sortBy,
+        ascending: filter.ascending.toString(),
+        ...Object.fromEntries(
+          Object.entries({
+            merchantName: filter.recipientName,
+            vnuban: filter.vNUBAN,
+            transactionRef: filter.transactionRef,
+            paymentReference: filter.paymentReference,
+            merchantOrgId: filter.merchantOrgId,
+            startDate: filter.startDate,
+            endDate: filter.endDate,
+            status: filter.status,
+          }).filter(([, v]) => v && v !== "")
+        ),
+      }).toString();
+      console.log("Frontend Request URL:", `/api/reports/payouts?${params}`);
+      const res = await fetch(`/api/reports/payouts?${params}`);
+      const data: PayoutResponse = await res.json();
+      console.log("API Response:", JSON.stringify(data, null, 2));
+      if (data.status) {
+        const mappedPayouts = data.data.content.map((p, index) => ({
+          sN: data.data.number * pageSize + index + 1,
+          recipientName: `${p.firstName || ""} ${p.lastName || ""}`.trim() || "Unknown",
+          vNUBAN: p.vnuban || "",
+          amount: p.amount || 0,
+          status: p.status || "",
+          payoutId: p.id,
+          dateRequested: p.createdAt
+            ? new Date(p.createdAt).toLocaleString("en-US", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "",
+          transactionRef: "",
+          paymentReference: "",
+          merchantOrgId: p.merchantOrgId || "",
+          updatedAt: p.updatedAt || "",
+        }));
+        setPayouts(mappedPayouts);
+        setTotalPages(data.data.totalPages);
+      } else {
+        setError(data.message || "Failed to fetch payouts");
+      }
+    } catch (error) {
+      console.error("Error fetching payouts:", error);
+      setError("Failed to fetch payouts");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPayouts();
+  }, [currentPage, filter, searchTerm]);
+
+  const filteredPayouts = useMemo(() => payouts, [payouts]);
 
   const paginatedPayouts = useMemo(() => {
     const start = currentPage * pageSize;
     return filteredPayouts.slice(start, start + pageSize);
   }, [filteredPayouts, currentPage]);
-
-  const totalPages = Math.ceil(filteredPayouts.length / pageSize);
 
   const getPageNumbers = () => {
     const pages = [];
@@ -90,8 +188,82 @@ export default function PayoutTable() {
     return names.length > 1 ? names[0][0] + names[names.length - 1][0] : names[0][0];
   };
 
+  const handleResetDate = () => setFilter((prev) => ({ ...prev, startDate: "", endDate: "" }));
+  const handleResetRecipient = () => setFilter((prev) => ({ ...prev, recipientName: "" }));
+  const handleResetVNUBAN = () => setFilter((prev) => ({ ...prev, vNUBAN: "" }));
+  const handleResetTransactionRef = () => setFilter((prev) => ({ ...prev, transactionRef: "" }));
+  const handleResetPaymentReference = () => setFilter((prev) => ({ ...prev, paymentReference: "" }));
+  const handleResetMerchantOrgId = () => setFilter((prev) => ({ ...prev, merchantOrgId: "" }));
+  const handleResetStatus = () => setFilter((prev) => ({ ...prev, status: "" }));
+  const handleResetSort = () => setFilter((prev) => ({ ...prev, sortBy: "createdAt", ascending: true }));
+  const handleResetAll = () =>
+    setFilter({
+      recipientName: "",
+      vNUBAN: "",
+      transactionRef: "",
+      paymentReference: "",
+      merchantOrgId: "",
+      startDate: "",
+      endDate: "",
+      status: "",
+      sortBy: "createdAt",
+      ascending: true,
+    });
+
+  function DatePicker({
+    id,
+    date,
+    onSelect,
+    placeholder,
+  }: {
+    id: string;
+    date: string;
+    onSelect: (date: string) => void;
+    placeholder: string;
+  }) {
+    const [open, setOpen] = useState(false);
+    const [month, setMonth] = useState<Date | undefined>(date ? new Date(date) : undefined);
+
+    const handleSelect = (selectedDate: Date | undefined) => {
+      onSelect(selectedDate ? selectedDate.toISOString().split("T")[0] : "");
+      if (selectedDate) setMonth(selectedDate);
+      setOpen(false);
+    };
+
+    return (
+      <div className="flex flex-col gap-1">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              id={id}
+              variant="outline"
+              className="w-full justify-start text-left font-normal pl-3 pr-10 py-2 border rounded-md text-sm bg-[#F8F8F8] dark:bg-gray-700"
+            >
+              <span>
+                {date
+                  ? new Date(date).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })
+                  : placeholder}
+              </span>
+              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 z-30" align="start">
+            <Calendar
+              mode="single"
+              selected={date ? new Date(date) : undefined}
+              onSelect={(date: Date | undefined) => handleSelect(date)} // Correctly pass the date to handleSelect
+              month={month}
+              className="rounded-md border"
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full relative">
+      {error && <div className="text-red-500 text-center my-4">{error}</div>}
       <div className="flex justify-between items-center mb-4 space-x-4">
         <div className="flex items-center space-x-4">
           <DropdownMenu>
@@ -101,19 +273,203 @@ export default function PayoutTable() {
                 <span>Filter</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48 bg-white dark:bg-background border rounded-lg shadow-lg p-4">
-              <DropdownMenuItem>
-                <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value)}>
-                  <SelectTrigger className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded">
-                    <SelectValue placeholder="Select Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Successful">Successful</SelectItem>
-                    <SelectItem value="Processing">Processing</SelectItem>
-                    <SelectItem value="Failed">Failed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </DropdownMenuItem>
+            <DropdownMenuContent className="w-84 bg-white dark:bg-background border rounded-lg shadow-lg p-4">
+              <DropdownMenuLabel>Filter</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="space-y-4">
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Date Range</label>
+                    <Button variant="link" className="text-red-500 p-0 h-auto" onClick={handleResetDate}>
+                      Reset
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <label htmlFor="start-date" className="text-xs text-gray-400 dark:text-gray-100">
+                        From:
+                      </label>
+                      <DatePicker
+                        id="start-date"
+                        date={filter.startDate}
+                        onSelect={(date) => setFilter((prev) => ({ ...prev, startDate: date }))}
+                        placeholder="YY/MM/DD"
+                      />
+                    </div>
+                    <div className="relative flex-1">
+                      <label htmlFor="end-date" className="text-xs text-gray-400 dark:text-gray-100">
+                        To:
+                      </label>
+                      <DatePicker
+                        id="end-date"
+                        date={filter.endDate}
+                        onSelect={(date) => setFilter((prev) => ({ ...prev, endDate: date }))}
+                        placeholder="YY/MM/DD"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Recipient Name</label>
+                    <Button
+                      variant="link"
+                      className="text-red-500 p-0 h-auto"
+                      onClick={handleResetRecipient}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Input
+                    value={filter.recipientName}
+                    onChange={(e) => setFilter((prev) => ({ ...prev, recipientName: e.target.value }))}
+                    placeholder="Recipient Name"
+                    className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">vNUBAN</label>
+                    <Button
+                      variant="link"
+                      className="text-red-500 p-0 h-auto"
+                      onClick={handleResetVNUBAN}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Input
+                    value={filter.vNUBAN}
+                    onChange={(e) => setFilter((prev) => ({ ...prev, vNUBAN: e.target.value }))}
+                    placeholder="vNUBAN"
+                    className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Transaction Ref</label>
+                    <Button
+                      variant="link"
+                      className="text-red-500 p-0 h-auto"
+                      onClick={handleResetTransactionRef}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Input
+                    value={filter.transactionRef}
+                    onChange={(e) => setFilter((prev) => ({ ...prev, transactionRef: e.target.value }))}
+                    placeholder="Transaction Ref"
+                    className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Payment Reference</label>
+                    <Button
+                      variant="link"
+                      className="text-red-500 p-0 h-auto"
+                      onClick={handleResetPaymentReference}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Input
+                    value={filter.paymentReference}
+                    onChange={(e) => setFilter((prev) => ({ ...prev, paymentReference: e.target.value }))}
+                    placeholder="Payment Reference"
+                    className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Merchant Org ID</label>
+                    <Button
+                      variant="link"
+                      className="text-red-500 p-0 h-auto"
+                      onClick={handleResetMerchantOrgId}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Input
+                    value={filter.merchantOrgId}
+                    onChange={(e) => setFilter((prev) => ({ ...prev, merchantOrgId: e.target.value }))}
+                    placeholder="Merchant Org ID"
+                    className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Status</label>
+                    <Button variant="link" className="text-red-500 p-0 h-auto" onClick={handleResetStatus}>
+                      Reset
+                    </Button>
+                  </div>
+                  <Select
+                    value={filter.status}
+                    onValueChange={(value) => setFilter((prev) => ({ ...prev, status: value }))}
+                  >
+                    <SelectTrigger className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded">
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Successful">
+                        <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: "#4CAF50" }} />
+                        Successful
+                      </SelectItem>
+                      <SelectItem value="Processing">
+                        <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: "#FF8C00" }} />
+                        Processing
+                      </SelectItem>
+                      <SelectItem value="Failed">
+                        <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: "#FF4444" }} />
+                        Failed
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between">
+                    <label className="text-sm">Sort By</label>
+                    <Button variant="link" className="text-red-500 p-0 h-auto" onClick={handleResetSort}>
+                      Reset
+                    </Button>
+                  </div>
+                  <Select
+                    value={filter.sortBy + (filter.ascending ? "" : "Desc")}
+                    onValueChange={(value) =>
+                      setFilter((prev) => ({
+                        ...prev,
+                        sortBy: value.includes("Desc") ? value.replace("Desc", "") : value,
+                        ascending: !value.includes("Desc"),
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="w-full bg-[#F8F8F8] dark:bg-gray-700 border-0 rounded">
+                      <SelectValue placeholder="Sort By" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="createdAt">Created At (Asc)</SelectItem>
+                      <SelectItem value="createdAtDesc">Created At (Desc)</SelectItem>
+                      <SelectItem value="merchantName">Recipient Name (Asc)</SelectItem>
+                      <SelectItem value="merchantNameDesc">Recipient Name (Desc)</SelectItem>
+                      <SelectItem value="amount">Amount (Asc)</SelectItem>
+                      <SelectItem value="amountDesc">Amount (Desc)</SelectItem>
+                      <SelectItem value="status">Status (Asc)</SelectItem>
+                      <SelectItem value="statusDesc">Status (Desc)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-between mt-4">
+                  <Button variant="outline" onClick={handleResetAll}>
+                    Reset All
+                  </Button>
+                  <Button className="bg-red-500 text-white hover:bg-red-600" onClick={() => {}}>
+                    Apply Now
+                  </Button>
+                </div>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
           <div className="relative w-[300px]">
@@ -191,7 +547,13 @@ export default function PayoutTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedPayouts.length > 0 ? (
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={8}>
+                <Loading />
+              </TableCell>
+            </TableRow>
+          ) : payouts.length > 0 ? (
             paginatedPayouts.map((payout) => (
               <TableRow key={payout.sN}>
                 <TableCell>{payout.sN}</TableCell>
@@ -273,7 +635,7 @@ export default function PayoutTable() {
         onClose={() => setSelectedPayout(null)}
         payout={selectedPayout}
         setSelectedPayout={setSelectedPayout}
-        payouts={payoutsData}
+        payouts={payouts}
       />
     </div>
   );
