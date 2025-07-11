@@ -2,12 +2,13 @@
 
 import { Button } from '@/components/ui/button'
 import { Download } from 'lucide-react'
-import React, {useState} from 'react'
+import React, { useState } from 'react'
 import { MetricCard } from './_components/MetricCard';
-// import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ExportModal } from '../dashboard/_components/ExportModal';
 import CustomerChart from './_components/CustomerChart';
 import { FiUserPlus } from "react-icons/fi";
+import CustomerTable from './_components/CustomerTable';
 
 
 interface DashboardMetric {
@@ -76,44 +77,44 @@ export default function CustomerPage() {
 
   return (
     <div className="min-h-screen mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-sm font-medium">Customers</h1>
 
-        <div  className="flex items-center space-x-2">
-        <Button variant={"outline"}>Add Customer <FiUserPlus /></Button>
-        <Button
-          onClick={() => setIsExportModalOpen(true)}
-          className=" hover:bg-[#A60000]  rounded-md"
-        >
-          Export
-          <Download className="h-4 w-4 ml-2" />
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Button variant={"outline"}>Add Customer <FiUserPlus /></Button>
+          <Button
+            onClick={() => setIsExportModalOpen(true)}
+            className=" hover:bg-[#A60000]  rounded-md"
+          >
+            Export
+            <Download className="h-4 w-4 ml-2" />
+          </Button>
         </div>
       </div>
 
       <div className="max-w-7xl">
-      <div className="space-y-8">
-       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {secondaryMetrics.map((metric) => (
-                    <MetricCard key={metric.id} metric={metric} />
-                  ))}
-                </div>
-                <div>
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {secondaryMetrics.map((metric) => (
+              <MetricCard key={metric.id} metric={metric} />
+            ))}
+          </div>
+          <div>
             <CustomerChart />
           </div>
-          {/* <Card >
-      <CardContent>
-      <TransactionTable />
-      </CardContent>
-      </Card> */}
-          </div>
-          </div>
-             <ExportModal
-                  isOpen={isExportModalOpen}
-                  onClose={() => setIsExportModalOpen(false)}
-                  onExport={handleExport}
-                  fieldOptions={fieldOptions}
-                />
+          <Card >
+            <CardContent>
+              <CustomerTable />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        fieldOptions={fieldOptions}
+      />
     </div>
   )
 }

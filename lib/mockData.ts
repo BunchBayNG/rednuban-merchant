@@ -782,3 +782,23 @@ export interface DashboardMetric {
     { sN: 10, staff: "Ngozi Eze", activity: "User Logout", description: "User Logout (Succeeded)", status: "Succeeded", timestamp: "01 Jul 2025 01:35 AM WAT", userType: "Admin", merchantName: "Merchant J", merchantId: "M010" },
     { sN: 11, staff: "Oluwatobi James", activity: "Role Assignment", description: "Role Assignment (Failed)", status: "Failed", timestamp: "10 Jul 2025 02:19 AM WAT", userType: "Merchant Access", merchantName: "Merchant K", merchantId: "M011" },
   ];
+
+  export const customerData = [
+  { sN: 1, customerName: "Aminu Bello", vnuban: "VN0012345678", status: "Active", totalValue: 5000.00, totalTransactions: 15, lastActivity: "04 Jul 2025 03:30 PM WAT" },
+  { sN: 2, customerName: "Chioma Okeke", vnuban: "VN0012345679", status: "Inactive", totalValue: 1200.50, totalTransactions: 3, lastActivity: "03 Jul 2025 10:15 AM WAT" },
+  { sN: 3, customerName: "Emeka Nwosu", vnuban: "VN0012345680", status: "Active", totalValue: 7500.75, totalTransactions: 25, lastActivity: "05 Jul 2025 01:45 PM WAT" },
+  { sN: 4, customerName: "Fatima Yusuf", vnuban: "VN0012345681", status: "Active", totalValue: 3000.00, totalTransactions: 8, lastActivity: "06 Jul 2025 09:20 AM WAT" },
+  { sN: 5, customerName: "Ibrahim Sani", vnuban: "VN0012345682", status: "Inactive", totalValue: 450.25, totalTransactions: 2, lastActivity: "02 Jul 2025 02:10 PM WAT" },
+];
+
+export const transactionData1 = [
+  { sN: 1, amount: 1000.00, status: "Completed", transactionId: "TXN001", timestamp: "05 Jul 2025 01:45 PM WAT" },
+  { sN: 2, amount: 500.50, status: "Pending", transactionId: "TXN002", timestamp: "04 Jul 2025 03:30 PM WAT" },
+  { sN: 3, amount: 200.75, status: "Failed", transactionId: "TXN003", timestamp: "03 Jul 2025 10:15 AM WAT" },
+  { sN: 4, amount: 750.00, status: "Completed", transactionId: "TXN004", timestamp: "06 Jul 2025 09:20 AM WAT" },
+];
+
+export const vnubanHistoryData1 = [
+  { sN: 1, vnuban: "VN0012345678", status: "Active", totalTransactions: 10, totalValue: 3500.00, lastUsed: "05 Jul 2025 01:45 PM WAT", createdAt: "01 Jul 2025 09:00 AM WAT" },
+  { sN: 2, vnuban: "VN0012345679", status: "Inactive", totalTransactions: 2, totalValue: 600.50, lastUsed: "03 Jul 2025 10:15 AM WAT", createdAt: "01 Jul 2025 09:05 AM WAT" },
+];
