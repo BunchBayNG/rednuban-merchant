@@ -13,20 +13,23 @@ import {
 import { Toaster, toast } from "sonner";
 import Deactivate from "@/components/svg Icons/Deactivate";
 import Reactivate from "@/components/svg Icons/Reactivate";
-// import { useState } from "react";
 
 interface VNUBAN {
   sN: number;
-  customerName: string;
-  vNUBAN: string;
+  id: number;
+  merchantName: string;
+  merchantOrgId: string;
+  accountNo: string;
+  accountName: string;
+  mode: string;
   status: string;
-  productPrefix: string;
-  type: string;
-  createdAt: string;
-  email: string;
-  creationIP: string;
-  deviceInfo: string;
-  processingTime: string;
+  productType: string | null;
+  initiatorRef: string;
+  provisionDate: string;
+  updatedAt: string;
+  vnuban: string;
+  vnubanType: string;
+  customerReference: string;
 }
 
 interface VNUBANDetailsModalProps {
@@ -56,8 +59,8 @@ export default function VNUBANDetailsModal({
 
   const handleExportDetails = () => {
     try {
-      toast.success(`Export successful for vNUBAN ${vNUBAN.vNUBAN}! Check your downloads.`);
-      console.log(`Mock export for vNUBAN ${vNUBAN.vNUBAN}`);
+      toast.success(`Export successful for vNUBAN ${vNUBAN.vnuban}! Check your downloads.`);
+      console.log(`Mock export for vNUBAN ${vNUBAN.vnuban}`);
       onClose();
     } catch (error) {
       toast.error("Export failed. Please try again later.");
@@ -75,7 +78,7 @@ export default function VNUBANDetailsModal({
     }
   };
 
-  const currentIndex = transactions.findIndex((t) => t.vNUBAN === vNUBAN.vNUBAN);
+  const currentIndex = transactions.findIndex((t) => t.vnuban === vNUBAN.vnuban);
   const prevVNUBAN = currentIndex > 0 ? transactions[currentIndex - 1] : null;
   const nextVNUBAN = currentIndex < transactions.length - 1 ? transactions[currentIndex + 1] : null;
 
@@ -113,7 +116,7 @@ export default function VNUBANDetailsModal({
           </div>
           <div className="flex justify-between border-b border-[#F8F8F8] dark:border-[#2A2A2A] py-3">
             <span className="text-red-500 font-medium text-sm">
-              vNUBAN: <span className="text-primary text-sm font-light">{vNUBAN.vNUBAN || "N/A"}</span>
+              vNUBAN: <span className="text-primary text-sm font-light">{vNUBAN.vnuban || "N/A"}</span>
             </span>
             <div className="flex space-x-2">
               <Button variant="ghost" size="icon" onClick={handlePrev} disabled={!prevVNUBAN}>
@@ -130,12 +133,12 @@ export default function VNUBANDetailsModal({
             <div className="flex items-center justify-between space-x-1 pb-5 border-b border-[#F8F8F8] dark:border-[#2A2A2A]">
               <div className="flex items-center gap-2">
                 <Avatar className="w-13 h-13">
-                  <AvatarImage src="/images/avatar-placeholder.jpg" alt={vNUBAN.customerName} />
-                  <AvatarFallback>{getInitials(vNUBAN.customerName)}</AvatarFallback>
+                  <AvatarImage src="/images/avatar-placeholder.jpg" alt={vNUBAN.merchantName} />
+                  <AvatarFallback>{getInitials(vNUBAN.merchantName)}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium text-sm">{vNUBAN.customerName || "N/A"}</p>
-                  <p className="text-xs text-gray-500">N/A</p>
+                  <p className="font-medium text-sm">{vNUBAN.merchantName || "N/A"}</p>
+                  <p className="text-xs text-gray-500">{vNUBAN.merchantOrgId || "N/A"}</p>
                 </div>
               </div>
               <div className="flex gap-3 items-center">
@@ -179,7 +182,7 @@ export default function VNUBANDetailsModal({
               </div>
               <div className="flex flex-col gap-2">
                 <span className="text-xs text-gray-500">Created At</span>
-                <span>{vNUBAN.createdAt || "N/A"} WAT</span>
+                <span>{vNUBAN.provisionDate || "N/A"} WAT</span>
               </div>
             </div>
           </div>
@@ -189,19 +192,19 @@ export default function VNUBANDetailsModal({
             <div className="flex flex-col gap-4 text-sm">
               <span className="flex gap-2 border-b border-[#F8F8F8] dark:border-[#2A2A2A] pb-2">
                 <p className="font-medium">Product Prefix:</p>
-                <span>{vNUBAN.productPrefix || "N/A"}</span>
+                <span>{vNUBAN.productType || "N/A"}</span>
               </span>
               <span className="flex gap-2 border-b border-[#F8F8F8] dark:border-[#2A2A2A] pb-2">
                 <p className="font-medium">Type:</p>
-                <span>{vNUBAN.type || "N/A"}</span>
+                <span>{vNUBAN.mode || "N/A"}</span> {/* Updated to use mode instead of vnubanType */}
               </span>
               <span className="flex gap-2 border-b border-[#F8F8F8] dark:border-[#2A2A2A] pb-2">
                 <p className="font-medium">Email:</p>
-                <span>{vNUBAN.email || "N/A"}</span>
+                <span>{vNUBAN.accountName || "N/A"}</span>
               </span>
               <span className="flex gap-2">
                 <p className="font-medium">Creation IP:</p>
-                <span>{vNUBAN.creationIP || "N/A"}</span>
+                <span>{vNUBAN.initiatorRef || "N/A"}</span>
               </span>
             </div>
           </div>
@@ -211,11 +214,11 @@ export default function VNUBANDetailsModal({
             <div>
               <span className="flex gap-2">
                 <p className="font-medium">Device Info:</p>
-                <span>{vNUBAN.deviceInfo || "N/A"}</span>
+                <span>{vNUBAN.updatedAt || "N/A"}</span>
               </span>
               <span className="flex gap-2">
                 <p className="font-medium">Processing Time:</p>
-                <span>{vNUBAN.processingTime || "N/A"}</span>
+                <span>N/A</span>
               </span>
             </div>
           </div>

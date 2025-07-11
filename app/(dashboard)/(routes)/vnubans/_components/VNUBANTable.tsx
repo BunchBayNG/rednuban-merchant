@@ -25,24 +25,43 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Filter, ChevronLeft, ChevronRight, Download, Eye } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { BsThreeDots } from "react-icons/bs";
 import Empty from "@/components/svg Icons/Empty";
-import { vNUBANData } from "@/lib/mockData";
 import VNUBANDetailsModal from "./VNUBANDetailsModal";
+import Loading from "@/components/Loading";
 
 interface VNUBAN {
   sN: number;
-  customerName: string;
-  vNUBAN: string;
+  id: number;
+  merchantName: string;
+  merchantOrgId: string;
+  accountNo: string;
+  accountName: string;
+  mode: string;
   status: string;
-  productPrefix: string;
-  type: string;
-  createdAt: string;
-  email: string;
-  creationIP: string;
-  deviceInfo: string;
-  processingTime: string;
+  productType: string | null;
+  initiatorRef: string;
+  provisionDate: string;
+  updatedAt: string;
+  vnuban: string; // Removed optional modifier
+  vnubanType: string; // Removed optional modifier
+  customerReference: string; // Removed optional modifier
+}
+
+interface VNUBANResponse {
+  statusCode: number;
+  status: boolean;
+  message: string;
+  data: {
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    content: VNUBAN[];
+    number: number;
+    first: boolean;
+    last: boolean;
+  };
 }
 
 export default function VNUBANTable() {
@@ -50,25 +69,75 @@ export default function VNUBANTable() {
   const pageSize = 10;
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [vnubans, setVNUBANs] = useState<VNUBAN[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedVNUBAN, setSelectedVNUBAN] = useState<VNUBAN | null>(null);
 
-  const filteredVNUBANs = useMemo(() => {
-    return vNUBANData.filter((vn) => {
-      const matchesSearch =
-        vn.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        vn.vNUBAN.includes(searchTerm) ||
-        vn.status.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus ? vn.status.toLowerCase() === filterStatus.toLowerCase() : true;
-      return matchesSearch && matchesStatus;
-    });
-  }, [searchTerm, filterStatus]);
+  const fetchVNUBANs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        size: pageSize.toString(),
+        sortBy: "provisionDate",
+        sortOrder: "asc",
+        search: searchTerm,
+        status: filterStatus,
+      }).toString();
+      console.log("Frontend Request URL:", `/api/reports/vnubans?${params}`);
+      const res = await fetch(`/api/reports/vnubans?${params}`);
+      const data: VNUBANResponse = await res.json();
+      console.log("API Response:", JSON.stringify(data, null, 2));
 
-  const paginatedVNUBANs = useMemo(() => {
-    const start = currentPage * pageSize;
-    return filteredVNUBANs.slice(start, start + pageSize);
-  }, [filteredVNUBANs, currentPage]);
+      if (res.ok && data.status) {
+        const mappedVNUBANs = data.data.content.map((v, index) => ({
+          sN: data.data.number * pageSize + index + 1,
+          id: v.id || 0,
+          merchantName: v.merchantName || "",
+          merchantOrgId: v.merchantOrgId || "",
+          accountNo: String(v.accountNo || ""),
+          accountName: String(v.accountName || ""),
+          mode: v.mode || "",
+          status: v.status || "",
+          productType: v.productType || null,
+          initiatorRef: String(v.initiatorRef || ""),
+          provisionDate: v.provisionDate
+            ? new Date(v.provisionDate).toLocaleString("en-US", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "",
+          updatedAt: v.updatedAt || "",
+          vnuban: String(v.accountNo || ""),
+          vnubanType: v.mode || "",
+          customerReference: String(v.initiatorRef || ""),
+        }));
+        setVNUBANs(mappedVNUBANs);
+        setTotalPages(data.data.totalPages);
+        setTotalElements(data.data.totalElements);
+      } else {
+        setError(data.message || `Failed to fetch vNUBANs (Status: ${res.status})`);
+      }
+    } catch (error) {
+      console.error("Error fetching vNUBANs:", error);
+      setError("Failed to fetch vNUBANs due to network or server error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const totalPages = Math.ceil(filteredVNUBANs.length / pageSize);
+  useEffect(() => {
+    fetchVNUBANs();
+  }, [currentPage, searchTerm, filterStatus]);
+
+  // const paginatedVNUBANs = useMemo(() => vnubans, [vnubans]);
 
   const getPageNumbers = () => {
     const pages = [];
@@ -91,6 +160,7 @@ export default function VNUBANTable() {
 
   return (
     <div className="w-full relative">
+      {error && <div className="text-red-500 text-center my-4">{error}</div>}
       <div className="flex justify-between items-center mb-4 space-x-4">
         <div className="flex items-center space-x-4">
           <DropdownMenu>
@@ -186,32 +256,38 @@ export default function VNUBANTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedVNUBANs.length > 0 ? (
-            paginatedVNUBANs.map((item) => (
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={8}>
+              <Loading />
+              </TableCell>
+            </TableRow>
+          ) : vnubans.length > 0 ? (
+            vnubans.map((item) => (
               <TableRow key={item.sN}>
                 <TableCell>{item.sN}</TableCell>
                 <TableCell className="flex items-center space-x-2">
                   <Avatar>
                     <AvatarImage src="/images/avatar-placeholder.jpg" alt="Customer Avatar" />
-                    <AvatarFallback>{getInitials(item.customerName)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(item.merchantName)}</AvatarFallback>
                   </Avatar>
-                  <span>{item.customerName}</span>
+                  <span>{item.merchantName}</span>
                 </TableCell>
-                <TableCell>{item.vNUBAN}</TableCell>
+                <TableCell>{item.vnuban}</TableCell>
                 <TableCell>
                   <span className="flex items-center">
                     <span
                       className="w-2 h-2 rounded-full mr-2"
-                      style={{ backgroundColor: item.status === "Active" ? "#4CAF50" : "#FF4444" }}
+                      style={{ backgroundColor: item.status === "ACTIVE" ? "#4CAF50" : "#FF4444" }}
                     />
-                    <span style={{ color: item.status === "Active" ? "#4CAF50" : "#FF4444" }}>
+                    <span style={{ color: item.status === "ACTIVE" ? "#4CAF50" : "#FF4444" }}>
                       {item.status}
                     </span>
                   </span>
                 </TableCell>
-                <TableCell>{item.productPrefix}</TableCell>
-                <TableCell>{item.type}</TableCell>
-                <TableCell>{item.createdAt}</TableCell>
+                <TableCell>{item.productType || "N/A"}</TableCell>
+                <TableCell>{item.vnubanType || "N/A"}</TableCell>
+                <TableCell>{item.provisionDate}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -247,10 +323,10 @@ export default function VNUBANTable() {
         isOpen={!!selectedVNUBAN}
         onClose={() => setSelectedVNUBAN(null)}
         vNUBAN={selectedVNUBAN}
-        setSelectedVNUBAN={setSelectedVNUBAN}
-        transactions={vNUBANData}
+        setSelectedVNUBAN={(vnuban: VNUBAN | null) => setSelectedVNUBAN(vnuban)} // Explicit typing
+        transactions={vnubans}
         currentPage={currentPage}
-        totalElements={vNUBANData.length}
+        totalElements={totalElements}
         filters={{ searchTerm, status: filterStatus }}
       />
     </div>
