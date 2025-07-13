@@ -6,7 +6,6 @@ import React, {useState} from 'react'
 import { MetricCard } from './_components/MetricCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { ExportModal } from '../dashboard/_components/ExportModal';
-import { FiUserPlus } from "react-icons/fi";
 import PayoutChart from './_components/PayoutChart';
 import PayoutTable from './_components/PayoutTable';
 
@@ -79,8 +78,6 @@ export default function PayoutPage() {
         <div className="flex justify-between items-center mb-6">
         <h1 className="text-sm font-medium">Payouts</h1>
 
-        <div  className="flex items-center space-x-2">
-        <Button variant={"outline"}>Add Customer <FiUserPlus /></Button>
         <Button
           onClick={() => setIsExportModalOpen(true)}
           className=" hover:bg-[#A60000]  rounded-md"
@@ -88,7 +85,6 @@ export default function PayoutPage() {
           Export
           <Download className="h-4 w-4 ml-2" />
         </Button>
-        </div>
       </div>
 
       <div className="max-w-7xl">
