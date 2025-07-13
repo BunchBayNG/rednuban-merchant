@@ -14,7 +14,7 @@ import { useState, useEffect } from "react";
 
 const formatDate = (date: Date) => date.toISOString().split("T")[0];
 const MIN_DATE = new Date("2020-01-01");
-const MAX_DATE = new Date("2025-07-13T01:31:00Z"); // 01:31 AM WAT, July 13, 2025
+const MAX_DATE = new Date("2025-07-13T01:42:00Z"); // 01:42 AM WAT, July 13, 2025
 
 interface DashboardMetric {
   id: string;
@@ -161,11 +161,8 @@ export function MetricCard({ metric }: MetricCardProps) {
         } else {
           const result = await fetchMetric(url, startDate, endDate, prevStart, prevEnd);
 
-         let current: number | string;
-          let changePercent = 0;
-
-          current = metric.id === "successful-transactions" ? result.success : result.total;
-          changePercent = result.change || 0;
+          const current = metric.id === "successful-transactions" ? result.success : result.total;
+          const changePercent = result.change || 0;
 
           let formattedValue: string;
           if (typeof current === "string") {
