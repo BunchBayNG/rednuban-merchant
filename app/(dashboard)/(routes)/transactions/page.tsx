@@ -23,7 +23,7 @@ export default function TransactionPage() {
 
   const secondaryMetrics: DashboardMetric[] = [
     {
-      id: 'distinctive-vnubans',
+      id: 'total-transactions',
       title: 'Total Transactions',
       value: '0',
       change: 22.7,
@@ -31,7 +31,7 @@ export default function TransactionPage() {
       period: 'Last 30 days'
     },
     {
-      id: 'pending-notifications',
+      id: 'successful-transactions',
       title: 'Successful Transactions',
       value: '0',
       change: 22.7,
@@ -39,7 +39,7 @@ export default function TransactionPage() {
       period: 'Last 30 days'
     },
     {
-      id: 'successful-amount',
+      id: 'total-value',
       title: 'Total Value Processed',
       value: '₦0',
       change: 22.7,
@@ -112,4 +112,3 @@ export default function TransactionPage() {
     </div>
   )
 }
-
