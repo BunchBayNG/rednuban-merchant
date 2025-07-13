@@ -73,7 +73,7 @@ interface TransactionResponse {
   };
 }
 
-export default function TransactionTable() {
+export default function TransactionTable({ dashboardMode = false }: { dashboardMode?: boolean }) {
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 10;
   const [searchTerm, setSearchTerm] = useState("");
@@ -168,8 +168,6 @@ export default function TransactionTable() {
     fetchTransactions();
   }, [currentPage, filter, searchTerm]);
 
-  // const paginatedTransactions = useMemo(() => transactions, [transactions]);
-
   const getPageNumbers = () => {
     const pages = [];
     if (totalPages <= 3) {
@@ -261,10 +259,12 @@ export default function TransactionTable() {
     );
   }
 
+  const displayedTransactions = dashboardMode ? transactions.slice(0, 10) : transactions;
+
   return (
     <div className="w-full relative">
       {error && <div className="text-red-500 text-center my-4">{error}</div>}
-      <div className="flex justify-between items-center mb-4 space-x-4">
+      <div className="flex justify-between items-center mb-4 space-x-4" style={{ display: dashboardMode ? "none" : "flex" }}>
         <div className="flex items-center space-x-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -459,7 +459,7 @@ export default function TransactionTable() {
           />
         </div>
 
-        <div className="flex items-center space-x-2 text-xs">
+        <div className="flex items-center space-x-2 text-xs" style={{ display: dashboardMode ? "none" : "flex" }}>
           <Button
             variant="outline"
             size="icon"
@@ -528,11 +528,11 @@ export default function TransactionTable() {
           {loading ? (
             <TableRow>
               <TableCell colSpan={8}>
-               <Loading/>
+                <Loading />
               </TableCell>
             </TableRow>
-          ) : transactions.length > 0 ? (
-            transactions.map((item) => (
+          ) : displayedTransactions.length > 0 ? (
+            displayedTransactions.map((item) => (
               <TableRow key={item.transactionId}>
                 <TableCell>{item.sN}</TableCell>
                 <TableCell className="flex items-center space-x-2">
