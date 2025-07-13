@@ -115,6 +115,7 @@ export function MetricCard({ metric }: MetricCardProps) {
     const supported = {
       "generated-vnubans": "/api/analytics/vnuban/total",
       "processed-transactions": "/api/analytics/transactions/successful-volume",
+      "active-vnubans": "/api/analytics/vnuban/total-dynamic"
     };
 
     if (!Object.keys(supported).includes(metric.id)) {
