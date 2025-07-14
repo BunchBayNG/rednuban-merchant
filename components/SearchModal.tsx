@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogOverlay, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CiUser } from "react-icons/ci";
@@ -16,8 +16,8 @@ interface Transaction {
   sN: number;
   id: number;
   transactionId: string;
-  merchantName: string;
-  merchantOrgId: string;
+  customerName: string;
+  customerOrgId: string;
   vnuban: string;
   amount: number;
   status: string;
@@ -38,8 +38,8 @@ interface Transaction {
 interface VNUBAN {
   sN: number;
   id: number;
-  merchantName: string;
-  merchantOrgId: string;
+  customerName: string;
+  customerOrgId: string;
   vnuban: string;
   accountName: string;
   vnubanType: string;
@@ -50,9 +50,9 @@ interface VNUBAN {
   updatedAt: string;
 }
 
-interface Merchant {
+interface Customer {
   sN: string;
-  merchantName: string;
+  customerName: string;
   code: string;
   accountName: string;
   accountNumber: string;
@@ -69,46 +69,51 @@ interface SearchModalProps {
   trigger: React.ReactNode;
   transactions: Transaction[];
   vnubans: VNUBAN[];
-  merchants: Merchant[] | undefined;
+  customers: Customer[] | undefined;
   setSearchQuery: (query: string) => void;
 }
 
 export default function SearchModal({
-  searchQuery,
   isOpen,
   onClose,
   trigger,
   transactions: initialTransactions,
   vnubans: initialVnubans,
-  merchants: initialMerchants = [], // Default to empty array
+  customers: initialCustomers = [],
   setSearchQuery,
 }: SearchModalProps) {
   const router = useRouter();
-  const [modalSearchQuery, setModalSearchQuery] = useState(searchQuery);
+  const [modalSearchQuery, setModalSearchQuery] = useState("");
   const [dataType, setDataType] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  const [vnubans, setVnubans] = useState<VNUBAN[]>(initialVnubans);
-  const [merchants, setMerchants] = useState<Merchant[]>(initialMerchants);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [vnubans, setVnubans] = useState<VNUBAN[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   useEffect(() => {
     if (isOpen) {
-      console.log("SearchModal initialVnubans:", initialVnubans.map(v => ({
-        id: v.id,
-        vnuban: v.vnuban,
-        merchantName: v.merchantName,
-        status: v.status
-      }))); // Debug: Log vnuban values
+      console.log("SearchModal opened, initial data:", {
+        initialTransactions: initialTransactions.length,
+        initialVnubans: initialVnubans.length,
+        initialCustomers: initialCustomers.length,
+      });
       setDataType(null);
-      setModalSearchQuery(searchQuery);
+      setModalSearchQuery("");
       setTransactions(initialTransactions);
       setVnubans(initialVnubans);
-      setMerchants(initialMerchants);
+      setCustomers(initialCustomers);
+    } else {
+      // Reset on close to prevent state carryover
+      setModalSearchQuery("");
+      setDataType(null);
+      setTransactions([]);
+      setVnubans([]);
+      setCustomers([]);
     }
-  }, [isOpen, searchQuery, initialTransactions, initialVnubans, initialMerchants]);
+  }, [isOpen, initialTransactions, initialVnubans, initialCustomers]);
 
-  const filteredMerchants = merchants.filter(
+  const filteredCustomers = customers.filter(
     (result) =>
-      result.merchantName?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+      result.customerName?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
       result.code?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
       result.accountName?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
       result.accountNumber?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
@@ -118,7 +123,7 @@ export default function SearchModal({
   const filteredTransactions = transactions.filter(
     (result) =>
       result.transactionId?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-      result.merchantName?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+      result.customerName?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
       result.vnuban?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
       result.amount?.toString().toLowerCase().includes(modalSearchQuery.toLowerCase())
   ).slice(0, 4);
@@ -127,46 +132,48 @@ export default function SearchModal({
     (result) => {
       const matches =
         result.vnuban?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-        result.merchantName?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+        result.customerName?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
         result.accountName?.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
         result.customerReference?.toLowerCase().includes(modalSearchQuery.toLowerCase());
       console.log("SearchModal filteredVnuban:", {
         id: result.id,
         vnuban: result.vnuban,
-        merchantName: result.merchantName,
+        customerName: result.customerName,
         status: result.status,
         matches: matches
-      }); // Debug: Log each filtered vnuban
+      });
       return matches;
     }
   ).slice(0, 4);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setDataType(null);
     setModalSearchQuery("");
-    setSearchQuery("");
     setTransactions(initialTransactions);
     setVnubans(initialVnubans);
-    setMerchants(initialMerchants);
-  };
+    setCustomers(initialCustomers);
+  }, [initialTransactions, initialVnubans, initialCustomers]);
 
-  const handleMerchants = () => {
-    router.push(`/merchant?search=${encodeURIComponent(modalSearchQuery)}`);
+  const handleCustomers = useCallback(() => {
+    setSearchQuery(modalSearchQuery);
+    router.push(`/customers?search=${encodeURIComponent(modalSearchQuery)}`);
     onClose();
-  };
+  }, [modalSearchQuery, setSearchQuery, router, onClose]);
 
-  const handleTransactions = () => {
+  const handleTransactions = useCallback(() => {
+    setSearchQuery(modalSearchQuery);
     router.push(`/transactions?search=${encodeURIComponent(modalSearchQuery)}`);
     onClose();
-  };
+  }, [modalSearchQuery, setSearchQuery, router, onClose]);
 
-  const handleVnuban = () => {
+  const handleVnuban = useCallback(() => {
+    setSearchQuery(modalSearchQuery);
     router.push(`/vnubans?search=${encodeURIComponent(modalSearchQuery)}`);
     onClose();
-  };
+  }, [modalSearchQuery, setSearchQuery, router, onClose]);
 
   const dataTypes = [
-    { name: "Merchants", icon: <CiUser className="w-5 h-5" /> },
+    { name: "Customers", icon: <CiUser className="w-5 h-5" /> },
     { name: "Transactions", icon: <TbReceipt className="w-5 h-5" /> },
     { name: "vNUBAN", icon: <TbReceipt className="w-5 h-5" /> },
   ];
@@ -180,7 +187,7 @@ export default function SearchModal({
     <>
       <div>{trigger}</div>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogOverlay className="backdrop-blur-xs bg-[#140000B2] dark:bg-black/50" />
+        <DialogOverlay className="fixed inset-0 z-50 bg-black/50" /> {/* Removed animations */}
         <VisuallyHidden>
           <DialogTitle>Search Modal</DialogTitle>
         </VisuallyHidden>
@@ -192,12 +199,9 @@ export default function SearchModal({
               </div>
               <Input
                 type="text"
-                placeholder="Search by Merchant, vNUBAN, or Transaction ID..."
+                placeholder="Search by customer, vNUBAN, or Transaction ID..."
                 value={modalSearchQuery}
-                onChange={(e) => {
-                  setModalSearchQuery(e.target.value);
-                  setSearchQuery(e.target.value);
-                }}
+                onChange={(e) => setModalSearchQuery(e.target.value)}
                 className="pl-10 bg-[#F8F8F8] dark:bg-background border-none rounded-lg h-10 w-full focus:ring-2 focus:ring-gray-200"
               />
             </div>
@@ -234,22 +238,22 @@ export default function SearchModal({
                 <>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-500">Merchants</p>
-                      {filteredMerchants.length > 0 && (
-                        <Button variant="link" className="text-xs text-red-600" onClick={handleMerchants}>
+                      <p className="text-xs text-gray-500">customers</p>
+                      {filteredCustomers.length > 0 && (
+                        <Button variant="link" className="text-xs text-red-600" onClick={handleCustomers}>
                           View All
                         </Button>
                       )}
                     </div>
-                    {filteredMerchants.length > 0 ? (
-                      filteredMerchants.map((result) => (
+                    {filteredCustomers.length > 0 ? (
+                      filteredCustomers.map((result) => (
                         <div key={result.sN} className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8">
-                              <AvatarFallback>{getInitials(result.merchantName)}</AvatarFallback>
+                              <AvatarFallback>{getInitials(result.customerName)}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-sm font-medium">{result.merchantName || "N/A"}</p>
+                              <p className="text-sm font-medium">{result.customerName || "N/A"}</p>
                               <p className="text-xs text-gray-500">{result.accountNumber || "N/A"}</p>
                             </div>
                           </div>
@@ -271,7 +275,7 @@ export default function SearchModal({
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-gray-500">No merchants found.</p>
+                      <p className="text-sm text-gray-500">No customers found.</p>
                     )}
                   </div>
 
@@ -289,10 +293,10 @@ export default function SearchModal({
                         <div key={result.sN} className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8">
-                              <AvatarFallback>{getInitials(result.merchantName)}</AvatarFallback>
+                              <AvatarFallback>{getInitials(result.customerName)}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-sm font-medium">{result.merchantName || "N/A"}</p>
+                              <p className="text-sm font-medium">{result.customerName || "N/A"}</p>
                               <p className="text-xs text-gray-500">{result.transactionId || "N/A"}</p>
                             </div>
                           </div>
@@ -341,10 +345,10 @@ export default function SearchModal({
                         <div key={result.sN} className="flex items-center justify-between gap-2">
                           <div className="flex gap-2">
                             <Avatar className="h-8 w-8">
-                              <AvatarFallback>{getInitials(result.merchantName)}</AvatarFallback>
+                              <AvatarFallback>{getInitials(result.customerName)}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-sm font-medium">{result.merchantName || "N/A"}</p>
+                              <p className="text-sm font-medium">{result.customerName || "N/A"}</p>
                               <p className="text-xs text-gray-500">{result.vnuban ? result.vnuban.slice(0, 10) : "N/A"}</p>
                             </div>
                           </div>
@@ -370,25 +374,25 @@ export default function SearchModal({
                     )}
                   </div>
                 </>
-              ) : dataType === "Merchants" ? (
+              ) : dataType === "customers" ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-500">Merchants</p>
-                    {filteredMerchants.length > 0 && (
-                      <Button variant="link" className="text-xs text-red-600" onClick={handleMerchants}>
+                    <p className="text-xs text-gray-500">customers</p>
+                    {filteredCustomers.length > 0 && (
+                      <Button variant="link" className="text-xs text-red-600" onClick={handleCustomers}>
                         View All
                       </Button>
                     )}
                   </div>
-                  {filteredMerchants.length > 0 ? (
-                    filteredMerchants.map((result) => (
+                  {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((result) => (
                       <div key={result.sN} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback>{getInitials(result.merchantName)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(result.customerName)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm font-medium">{result.merchantName || "N/A"}</p>
+                            <p className="text-sm font-medium">{result.customerName || "N/A"}</p>
                             <p className="text-xs text-gray-500">{result.accountNumber || "N/A"}</p>
                           </div>
                         </div>
@@ -410,7 +414,7 @@ export default function SearchModal({
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">No merchants found.</p>
+                    <p className="text-sm text-gray-500">No customers found.</p>
                   )}
                 </div>
               ) : dataType === "Transactions" ? (
@@ -428,10 +432,10 @@ export default function SearchModal({
                       <div key={result.sN} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback>{getInitials(result.merchantName)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(result.customerName)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm font-medium">{result.merchantName || "N/A"}</p>
+                            <p className="text-sm font-medium">{result.customerName || "N/A"}</p>
                             <p className="text-xs text-gray-500">{result.transactionId || "N/A"}</p>
                           </div>
                         </div>
@@ -480,10 +484,10 @@ export default function SearchModal({
                       <div key={result.sN} className="flex items-center justify-between gap-2">
                         <div className="flex gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback>{getInitials(result.merchantName)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(result.customerName)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm font-medium">{result.merchantName || "N/A"}</p>
+                            <p className="text-sm font-medium">{result.customerName || "N/A"}</p>
                             <p className="text-xs text-gray-500">{result.vnuban ? result.vnuban.slice(0, 10) : "N/A"}</p>
                           </div>
                         </div>

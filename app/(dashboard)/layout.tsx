@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { Navbar } from "./_components/navbar";
 import { Sidebar } from "./_components/sidebar";
 
-interface Merchant {
+interface Customer {
   sN: string;
-  merchantName: string;
+  customerName: string; // Changed from merchantName
   code: string;
   accountName: string;
   accountNumber: string;
@@ -17,7 +17,7 @@ interface Merchant {
 }
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   useEffect(() => {
     const fetchMerchants = async () => {
@@ -53,7 +53,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                 })
               : "N/A",
           }));
-          setMerchants(mappedMerchants);
+          setCustomers(mappedMerchants);
         }
       } catch (error) {
         console.error("Error fetching merchants:", error);
@@ -65,7 +65,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="h-full">
       <div className="h-[80px] md:pl-62.5 fixed inset-y-0 w-full z-50">
-        <Navbar merchants={merchants} />
+        <Navbar customers={customers} />
       </div>
       <div className="hidden md:flex h-full w-56 flex-col fixed inset-y-0 z-45">
         <Sidebar />

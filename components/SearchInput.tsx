@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import SearchModal from "./SearchModal";
 
@@ -10,8 +10,8 @@ interface Transaction {
   sN: number;
   id: number;
   transactionId: string;
-  merchantName: string;
-  merchantOrgId: string;
+  customerName: string;
+  customerOrgId: string;
   vnuban: string;
   amount: number;
   status: string;
@@ -32,8 +32,8 @@ interface Transaction {
 interface VNUBAN {
   sN: number;
   id: number;
-  merchantName: string;
-  merchantOrgId: string;
+  customerName: string;
+  customerOrgId: string;
   vnuban: string;
   accountName: string;
   vnubanType: string;
@@ -44,9 +44,9 @@ interface VNUBAN {
   updatedAt: string;
 }
 
-interface Merchant {
+interface Customer {
   sN: string;
-  merchantName: string;
+  customerName: string;
   code: string;
   accountName: string;
   accountNumber: string;
@@ -59,139 +59,99 @@ interface Merchant {
 interface SearchInputProps {
   transactions: Transaction[];
   vnubans: VNUBAN[];
-  merchants: Merchant[];
+  customers: Customer[];
 }
 
-export const SearchInput = ({ transactions: initialTransactions, vnubans: initialVnubans, merchants }: SearchInputProps) => {
+export const SearchInput = ({ transactions: initialTransactions, vnubans: initialVnubans, customers: initialCustomers }: SearchInputProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [transactions, ] = useState<Transaction[]>(initialTransactions);
-  const [vnubans, ] = useState<VNUBAN[]>(initialVnubans);
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [vnubans, setVnubans] = useState<VNUBAN[]>(initialVnubans);
   const router = useRouter();
 
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     try {
-  //       // Fetch transactions
-  //       const transactionResponse = await fetch("/api/reports/transactions?page=0&size=10&sortBy=createdAt&sortOrder=ASC", {
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //           Authorization: `Bearer ${document.cookie
-  //             .split("; ")
-  //             .find((row) => row.startsWith("accessToken="))
-  //             ?.split("=")[1]}`,
-  //         },
-  //       });
-  //       const transactionData = await transactionResponse.json();
-  //       console.log("SearchInput transaction API response:", JSON.stringify(transactionData, null, 2));
-  //       if (transactionResponse.ok && transactionData.status) {
-  //          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //         const mappedTransactions = transactionData.data.content.map((item: any) => ({
-  //           sN: item.id || Math.random().toString(36).substr(2, 9),
-  //           id: item.id || 0,
-  //           transactionId: item.transactionId || "N/A",
-  //           merchantName: item.merchantName || "N/A",
-  //           merchantOrgId: item.merchantOrgId || "N/A",
-  //           vnuban: String(item.accountNo || ""), // Align with VNUBANTable
-  //           amount: item.amount || 0,
-  //           status: item.status || "Unknown",
-  //           sessionId: item.sessionId || "N/A",
-  //           reference: item.reference || "N/A",
-  //           webhookStatus: item.webhookStatus || "N/A",
-  //           transactionType: item.transactionType || "N/A",
-  //           destinationAccountNumber: item.destinationAccountNumber || "N/A",
-  //           destinationAccountName: item.destinationAccountName || "N/A",
-  //           destinationBankName: item.destinationBankName || "N/A",
-  //           ipAddress: item.ipAddress || "N/A",
-  //           deviceName: item.deviceName || "N/A",
-  //           processingTime: item.processingTime || 0,
-  //           createdAt: item.createdAt
-  //             ? new Date(item.createdAt).toLocaleString("en-US", {
-  //                 day: "2-digit",
-  //                 month: "short",
-  //                 year: "numeric",
-  //                 hour: "2-digit",
-  //                 minute: "2-digit",
-  //               })
-  //             : "N/A",
-  //           updatedAt: item.updatedAt
-  //             ? new Date(item.updatedAt).toLocaleString("en-US", {
-  //                 day: "2-digit",
-  //                 month: "short",
-  //                 year: "numeric",
-  //                 hour: "2-digit",
-  //                 minute: "2-digit",
-  //               })
-  //             : "N/A",
-  //         }));
-  //         setTransactions(mappedTransactions);
-  //         console.log("SearchInput mapped transactions:", mappedTransactions.map((t: Transaction) => ({
-  //           id: t.id,
-  //           vnuban: t.vnuban,
-  //           merchantName: t.merchantName,
-  //           status: t.status
-  //         })));
-  //       }
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const transactionResponse = await fetch("/api/reports/transactions?page=0&size=10&sortBy=createdAt&sortOrder=ASC", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${document.cookie
+              .split("; ")
+              .find((row) => row.startsWith("accessToken="))
+              ?.split("=")[1]}`,
+          },
+        });
+        const transactionData = await transactionResponse.json();
+        if (transactionResponse.ok && transactionData.status) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mappedTransactions = transactionData.data.content.map((item: any) => ({
+            sN: item.id || Math.random().toString(36).substr(2, 9),
+            id: item.id || 0,
+            transactionId: item.transactionId || "N/A",
+            customerName: item.merchantName || "N/A",
+            customerOrgId: item.merchantOrgId || "N/A",
+            vnuban: String(item.accountNo || ""),
+            amount: item.amount || 0,
+            status: item.status || "Unknown",
+            sessionId: item.sessionId || "N/A",
+            reference: item.reference || "N/A",
+            webhookStatus: item.webhookStatus || "N/A",
+            transactionType: item.transactionType || "N/A",
+            destinationAccountNumber: item.destinationAccountNumber || "N/A",
+            destinationAccountName: item.destinationAccountName || "N/A",
+            destinationBankName: item.destinationBankName || "N/A",
+            ipAddress: item.ipAddress || "N/A",
+            deviceName: item.deviceName || "N/A",
+            processingTime: item.processingTime || 0,
+            createdAt: item.createdAt
+              ? new Date(item.createdAt).toLocaleString("en-US", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+              : "N/A",
+            updatedAt: item.updatedAt
+              ? new Date(item.updatedAt).toLocaleString("en-US", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+              : "N/A",
+          }));
+          setTransactions(mappedTransactions);
+        }
 
-  //       // Fetch vnubans
-  //       const vnubanResponse = await fetch("/api/reports/vnubans?page=0&size=10&sortBy=provisionDate&sortOrder=ASC", {
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //           Authorization: `Bearer ${document.cookie
-  //             .split("; ")
-  //             .find((row) => row.startsWith("accessToken="))
-  //             ?.split("=")[1]}`,
-  //         },
-  //       });
-  //       const vnubanData = await vnubanResponse.json();
-  //       console.log("SearchInput vnuban API response:", JSON.stringify(vnubanData, null, 2));
-  //       if (vnubanResponse.ok && vnubanData.status) {
-  //          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //         const mappedVnubans = vnubanData.data.content.map((item: any) => ({
-  //           sN: item.id || Math.random().toString(36).substr(2, 9),
-  //           id: item.id || 0,
-  //           merchantName: item.merchantName || "N/A",
-  //           merchantOrgId: item.merchantOrgId || "N/A",
-  //           vnuban: String(item.accountNo || ""), // Fix: Map accountNo to vnuban
-  //           accountName: String(item.accountName || "N/A"),
-  //           vnubanType: item.mode || "N/A", // Align with VNUBANTable
-  //           status: item.status || "Unknown",
-  //           productType: item.productType || null,
-  //           customerReference: String(item.initiatorRef || "N/A"), // Align with VNUBANTable
-  //           provisionDate: item.provisionDate
-  //             ? new Date(item.provisionDate).toLocaleString("en-US", {
-  //                 day: "2-digit",
-  //                 month: "short",
-  //                 year: "numeric",
-  //                 hour: "2-digit",
-  //                 minute: "2-digit",
-  //               })
-  //             : "N/A",
-  //           updatedAt: item.updatedAt
-  //             ? new Date(item.updatedAt).toLocaleString("en-US", {
-  //                 day: "2-digit",
-  //                 month: "short",
-  //                 year: "numeric",
-  //                 hour: "2-digit",
-  //                 minute: "2-digit",
-  //               })
-  //             : "N/A",
-  //         }));
-  //         setVnubans(mappedVnubans);
-  //         console.log("SearchInput mapped vnubans:", mappedVnubans.map((v: VNUBAN) => ({
-  //           id: v.id,
-  //           vnuban: v.vnuban,
-  //           merchantName: v.merchantName,
-  //           status: v.status
-  //         })));
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching data:", error);
-  //     }
-  //   };
+        const vnubanResponse = await fetch("/api/reports/vnubans?page=0&size=10&sortBy=provisionDate&sortOrder=ASC", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${document.cookie
+              .split("; ")
+              .find((row) => row.startsWith("accessToken="))
+              ?.split("=")[1]}`,
+          },
+        });
+        const vnubanData = await vnubanResponse.json();
+        if (vnubanResponse.ok && vnubanData.status) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mappedVnubans = vnubanData.data.content.map((item: any) => ({
+            sN: item.id || Math.random().toString(36).substr(2, 9),
+            id: item.id || 0,
+            customerName: item.merchantName || "N/A",
+            customerOrgId: item.merchantOrgId || "N/A",
+            vnuban: String(item.accountNo || ""),
+            accountName: String(item.accountName || "N/A"),
+            vnubanType: item.mode || "N/A",
+            status: item.status || "Unknown",
+            productType: item.productType || null,
+            customerReference: String(item.initiatorRef || "N/A"),
+            provisionDate: item.provisionDate
+              ? new Date(item.provisionDate).toLocaleString("en-US", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+              : "N/A",
+            updatedAt: item.updatedAt
+              ? new Date(item.updatedAt).toLocaleString("en-US", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+              : "N/A",
+          }));
+          setVnubans(mappedVnubans);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
 
-  //   fetchData();
-  // }, []);
+    fetchData();
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,18 +160,23 @@ export const SearchInput = ({ transactions: initialTransactions, vnubans: initia
     }
   };
 
-  const handleInputClick = () => {
+  const handleInputClick = useCallback(() => {
     setIsModalOpen(true);
-  };
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setIsModalOpen(false);
+    setSearchQuery(""); // Reset parent query on close to break potential sync
+  }, [setSearchQuery]);
 
   return (
     <SearchModal
       searchQuery={searchQuery}
       isOpen={isModalOpen}
-      onClose={() => setIsModalOpen(false)}
+      onClose={handleClose}
       transactions={transactions}
       vnubans={vnubans}
-      merchants={merchants}
+      customers={initialCustomers}
       setSearchQuery={setSearchQuery}
       trigger={
         <form onSubmit={handleSearch} className="relative">

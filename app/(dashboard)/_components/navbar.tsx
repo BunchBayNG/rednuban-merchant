@@ -3,9 +3,9 @@
 import { NavbarRoutes } from "@/components/navbar-routes";
 import { MobileSidebar } from "./Mobile-sidebar";
 
-interface Merchant {
+interface Customer {
   sN: string;
-  merchantName: string;
+  customerName: string; // Changed from merchantName
   code: string;
   accountName: string;
   accountNumber: string;
@@ -16,14 +16,14 @@ interface Merchant {
 }
 
 interface NavbarProps {
-  merchants: Merchant[];
+  customers: Customer[];
 }
 
-export const Navbar = ({ merchants }: NavbarProps) => {
+export const Navbar = ({ customers }: NavbarProps) => {
   return (
     <div className="p-4 border-b h-full flex items-center shadow-sm bg-card">
       <MobileSidebar />
-      <NavbarRoutes merchants={merchants} />
+      <NavbarRoutes customers={customers} />
     </div>
   );
 };
