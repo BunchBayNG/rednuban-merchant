@@ -84,7 +84,7 @@ export default function DashboardPage() {
       <div>
         <div className="max-w-7xl">
           <div className="flex items-center justify-between h-16">
-            <h1 className="text-lg font-medium">Dashboard</h1>
+            <h1 className="text-sm font-medium">Dashboard</h1>
             <div className="flex items-center space-x-2">
               <Button onClick={() => setIsExportModalOpen(true)} className="">
                 <Download className="h-4 w-4" />
