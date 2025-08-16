@@ -113,6 +113,7 @@ export function MetricCard({ metric }: MetricCardProps) {
 
   useEffect(() => {
     const supported = {
+      "distinctive-vnubans": "/api/analytics/vnuban/total-distinctive",
       "generated-vnubans": "/api/analytics/vnuban/total",
       "processed-transactions": "/api/analytics/transactions/successful-volume",
       "active-vnubans": "/api/analytics/vnuban/total-dynamic"

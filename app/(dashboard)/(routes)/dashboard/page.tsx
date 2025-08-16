@@ -5,7 +5,7 @@ import { Download } from "lucide-react";
 import React, { useState } from "react";
 import { MerchantsChart } from "./_components/MerchantCard";
 import { TransactionFlowChart } from "./_components/TransactionFlowChart";
-import RevenueChart from "./_components/RevenueChart";
+// import RevenueChart from "./_components/RevenueChart";
 import { ExportModal } from "./_components/ExportModal";
 import TransactionTable from "../transactions/_components/TransactionTable";
 import { MetricCard } from "./_components/ MetricCard";
@@ -28,7 +28,7 @@ export default function DashboardPage() {
   const secondaryMetrics: DashboardMetric[] = [
     {
       id: "distinctive-vnubans",
-      title: "Total Customers",
+      title: "Total Distinctive vNUBANs",
       value: "0",
       change: 22.7,
       changeType: "positive",
@@ -36,7 +36,7 @@ export default function DashboardPage() {
     },
     {
       id: "generated-vnubans",
-      title: "Generated vNUBANs",
+      title: "Total vNUBANs",
       value: "0",
       change: 22.7,
       changeType: "positive",
@@ -52,7 +52,7 @@ export default function DashboardPage() {
     },
     {
       id: "active-vnubans",
-      title: "Active vNUBANs",
+      title: "Total Dynamic vNUBANs",
       value: "₦0",
       change: 22.7,
       changeType: "positive",
@@ -107,7 +107,7 @@ export default function DashboardPage() {
             <TransactionFlowChart />
           </div>
           <div>
-            <RevenueChart />
+            
           </div>
           <Card >
       <CardContent>

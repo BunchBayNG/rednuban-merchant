@@ -34,7 +34,7 @@ export default function VnubanPage() {
     },
     {
       id: 'pending-notifications',
-      title: 'Active vNUBANs',
+      title: 'Total Dynamic vNUBANs',
       value: '0',
       change: 22.7,
       changeType: 'positive',
@@ -42,7 +42,7 @@ export default function VnubanPage() {
     },
     {
       id: 'successful-amount',
-      title: 'Total Transaction Value ',
+      title: 'Total Distinctive vNUBANs', 
       value: '₦0',
       change: 22.7,
       changeType: 'positive',

@@ -114,7 +114,7 @@ export function MetricCard({ metric }: MetricCardProps) {
   useEffect(() => {
     const supported = {
       "distinctive-vnubans": "/api/analytics/vnuban/total",
-      "successful-amount": "/api/analytics/transactions/successful-volume",
+      "successful-amount": "/api/analytics/vnuban/total-distinctive",
       "pending-notifications": "/api/analytics/vnuban/total-dynamic",
     };
 
@@ -145,7 +145,7 @@ export function MetricCard({ metric }: MetricCardProps) {
         let formattedValue: string;
         if (typeof current === "string") {
           formattedValue = current;
-        } else if (["virtual-transaction-flow", "successful-amount", "payouts-processed"].includes(metric.id)) {
+        } else if (["virtual-transaction-flow", "payouts-processed"].includes(metric.id)) {
           formattedValue = `₦${current.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
         } else {
           formattedValue = current.toLocaleString("en-NG");

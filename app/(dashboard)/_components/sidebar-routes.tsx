@@ -9,7 +9,7 @@ import { useState } from "react";
 import { SVGProps } from "react";
 import Dashboard from "@/components/svg Icons/Dashboard";
 import Transactions from "@/components/svg Icons/Transactions";
-import Customers from "@/components/svg Icons/Customers";
+// import Customers from "@/components/svg Icons/Customers";
 import Vnu from "@/components/svg Icons/Vnu";
 import Staff from "@/components/svg Icons/Staff";
 import Payouts from "@/components/svg Icons/Payouts";
@@ -29,7 +29,7 @@ interface Route {
 const adminRoutes: Route[] = [
   { icon: Dashboard, label: "Dashboard", href: "/dashboard" },
   {icon: Transactions, label: "Transactions", href: "/transactions"},
-  { icon: Customers, label: "Customers", href: "/customers" },
+  // { icon: Customers, label: "Customers", href: "/customers" },
   { icon: Vnu, label: "vNUBANs", href: "/vnubans" },
   { icon: Staff , label: "Staff", href: "/staff" },
   { icon: Payouts, label: "Payouts", href: "/payouts" },

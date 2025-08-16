@@ -1,12 +1,12 @@
 "use client";
 
 import { Button } from '@/components/ui/button'
-import { Download } from 'lucide-react'
+// import { Download } from 'lucide-react'
 import React, { useState } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card';
 import { ExportModal } from '../dashboard/_components/ExportModal';
-import { StaffsChart } from './_components/StaffsChart'
+// import { StaffsChart } from './_components/StaffsChart'
 import { FiUserPlus } from 'react-icons/fi';
 import StaffTable from './_components/StaffTable';
 
@@ -45,20 +45,20 @@ export default function StaffPage() {
 
         <div className="flex items-center space-x-2">
           <Button variant={"outline"}>Add Staff <FiUserPlus /></Button>
-          <Button
+          {/* <Button
             onClick={() => setIsExportModalOpen(true)}
             className=" hover:bg-[#A60000]  rounded-md"
           >
             Export
             <Download className="h-4 w-4 ml-2" />
-          </Button>
+          </Button> */}
         </div>
       </div>
 
 
       <div className="max-w-7xl">
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className='px-0'>
               <CardContent className='flex flex-col justify-between items-center h-full'>
                 <div className=" w-full pb-8 h-[100px]">
@@ -76,7 +76,7 @@ export default function StaffPage() {
               </CardContent>
             </Card>
             <StaffsChart />
-          </div>
+          </div> */}
           <div>
           </div>
           <Card >

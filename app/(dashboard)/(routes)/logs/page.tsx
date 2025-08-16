@@ -5,7 +5,7 @@ import { Download } from 'lucide-react'
 import React, { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card';
 import { ExportModal } from '../dashboard/_components/ExportModal';
-import { LogsChart } from './_components/LogsChart'
+// import { LogsChart } from './_components/LogsChart'
 import { ApiLogsTable } from './_components/ApiLogsTable';
 
 
@@ -52,8 +52,8 @@ export default function AuditPage() {
       </div>
 
       <div className="max-w-7xl">
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className='px-0'>
               <CardContent className='flex flex-col justify-between items-center h-full'>
                 <div className=" w-full pb-8 h-[100px]">
@@ -71,7 +71,7 @@ export default function AuditPage() {
               </CardContent>
             </Card>
             <LogsChart />
-          </div>
+          </div> */}
           <div>
           </div>
           <Card >

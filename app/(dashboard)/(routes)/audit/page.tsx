@@ -5,7 +5,7 @@ import { Download } from 'lucide-react'
 import React, { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card';
 import { ExportModal } from '../dashboard/_components/ExportModal';
-import { MetricCard } from './_components/MetricCard';
+// import { MetricCard } from './_components/MetricCard';
 import AuditTrailTable from './_components/AuditTrailTable';
 
 
@@ -86,12 +86,12 @@ export default function AuditPage() {
       </div>
 
       <div className="max-w-7xl">
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="space-y-6">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {secondaryMetrics.map((metric) => (
               <MetricCard key={metric.id} metric={metric} />
             ))}
-          </div>
+          </div> */}
           <div>
           </div>
           <Card >
