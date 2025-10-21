@@ -24,48 +24,123 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Filter, Search, ChevronLeft, ChevronRight, Eye, Download } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Empty from "@/components/svg Icons/Empty";
-import { auditData } from "@/lib/mockData";
 import AuditTrailDetailsModal from "./AuditTrailDetailsModal";
 import { BsThreeDots } from "react-icons/bs";
+import Loader from "@/components/svg Icons/loader";
 
 interface AuditLog {
-  sN: number;
-  staff: string;
-  activity: string;
-  description: string;
-  status: string;
-  timestamp: string;
-  userType: string;
+  id: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedBy: string;
+  userId: string;
+  userName: string;
+  email: string;
+  userRole: string;
+  userIpAddress: string;
   merchantName: string;
-  merchantId: string;
+  merchantOrganization: string;
+  merchantOrgId: string;
+  event: string;
+  userType: string;
+  description: string;
+  deleted: boolean;
+}
+
+interface AuditResponse {
+  statusCode: number;
+  status: boolean;
+  message: string;
+  data: {
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    content: AuditLog[];
+    number: number;
+    numberOfElements: number;
+    first: boolean;
+    last: boolean;
+  };
 }
 
 export default function AuditTrailTable() {
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [data, setData] = useState<AuditResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredLogs = useMemo(() => {
-    return auditData.filter((log) => {
-      const matchesSearch =
-        log.staff.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.activity.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus ? log.status.toLowerCase() === filterStatus.toLowerCase() : true;
-      return matchesSearch && matchesStatus;
-    });
-  }, [searchTerm, filterStatus]);
+  const itemsPerPage = 10;
 
-  const paginatedLogs = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredLogs.slice(start, start + itemsPerPage);
-  }, [filteredLogs, currentPage]);
+  useEffect(() => {
+    const fetchAuditLogs = async () => {
+      setLoading(true);
+      setError(null);
 
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+      const params = new URLSearchParams({
+        page: (currentPage - 1).toString(),
+        size: itemsPerPage.toString(),
+        search: searchTerm,
+        status: filterStatus,
+        sortBy: "createdAt",
+        sortOrder: "DESC",
+      });
+
+      const url = `/api/audit-log?${params.toString()}`;
+      console.log("Fetching audit logs", { url, queryParams: Object.fromEntries(params) });
+
+      try {
+        const response = await fetch(`${url}&cacheBust=${Date.now()}`, {
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        });
+
+        let result: AuditResponse;
+        const text = await response.text();
+        try {
+          result = JSON.parse(text);
+        } catch (error) {
+          console.log(error)
+          console.error("Invalid JSON response", { status: response.status, text: text.slice(0, 100) });
+          throw new Error(`Invalid response: Not JSON (status ${response.status})`);
+        }
+
+        console.log("Audit logs response", {
+          status: response.status,
+          body: JSON.stringify(result, null, 2),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${result.message || "Unknown"} (status ${result.statusCode})`);
+        }
+
+        if (!result.status) {
+          throw new Error(result.message || `Failed to fetch audit logs (status ${response.status})`);
+        }
+
+        setData(result);
+      } // eslint-disable-next-line @typescript-eslint/no-explicit-any 
+      catch (err: any) {
+        console.error("Error fetching audit logs", {
+          message: err.message || "Unknown error",
+        });
+        setError(err.message || "Failed to fetch audit logs");
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAuditLogs();
+  }, [currentPage, searchTerm, filterStatus]);
+
+  const totalPages = data?.data.totalPages || 1;
 
   const getPageNumbers = () => {
     const pages = [];
@@ -79,6 +154,15 @@ export default function AuditTrailTable() {
       pages.push(totalPages);
     }
     return pages;
+  };
+
+  const handleExportDetails = async (log: AuditLog) => {
+    try {
+      console.log(`Export details for:`, log);
+      // Add export functionality here
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
@@ -99,8 +183,9 @@ export default function AuditTrailTable() {
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Succeeded">Succeeded</SelectItem>
-                    <SelectItem value="Failed">Failed</SelectItem>
+                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="SUCCESS">SUCCESS</SelectItem>
+                    <SelectItem value="FAILED">FAILED</SelectItem>
                   </SelectContent>
                 </Select>
               </DropdownMenuItem>
@@ -108,7 +193,7 @@ export default function AuditTrailTable() {
           </DropdownMenu>
           <div className="relative w-[300px]">
             <Input
-              placeholder="Search Staff, Activity, Description..."
+              placeholder="Search User, Merchant, Event..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-3 pr-10 bg-[#F8F8F8] dark:bg-background border-0"
@@ -121,7 +206,7 @@ export default function AuditTrailTable() {
             variant="outline"
             size="icon"
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
+            disabled={currentPage === 1 || loading}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -134,7 +219,7 @@ export default function AuditTrailTable() {
                   variant={currentPage === page ? "default" : "outline"}
                   size="sm"
                   onClick={() => setCurrentPage(Number(page))}
-                  disabled={page === "..." || page === currentPage}
+                  disabled={page === "..." || page === currentPage || loading}
                 >
                   {page}
                 </Button>
@@ -145,7 +230,7 @@ export default function AuditTrailTable() {
             variant="outline"
             size="icon"
             onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages}
+            disabled={currentPage === totalPages || loading}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -167,38 +252,68 @@ export default function AuditTrailTable() {
           </Select>
         </div>
       </div>
+
       <Table>
         <TableHeader className="bg-[#F5F5F5] dark:bg-background">
           <TableRow>
             <TableHead>S/N</TableHead>
-            <TableHead>Staff</TableHead>
-            <TableHead>Activity</TableHead>
+            <TableHead>User</TableHead>
+            <TableHead>User Role</TableHead>
+            <TableHead>Merchant</TableHead>
+            <TableHead>Action</TableHead>
             <TableHead>Description</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Timestamp</TableHead>
+            <TableHead>Time</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedLogs.length > 0 ? (
-            paginatedLogs.map((log) => (
-              <TableRow key={log.sN}>
-                <TableCell>{log.sN}</TableCell>
-                <TableCell>{log.staff}</TableCell>
-                <TableCell>{log.activity}</TableCell>
-                <TableCell>{log.description}</TableCell>
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center">
+                <div className="relative w-17 p-4 h-17 mx-auto my-5">
+                  <div className="absolute inset-0 border-4 border-transparent border-t-[#C80000] rounded-full animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center m-3 justify-center">
+                    <Loader />
+                  </div>
+                </div>
+              </TableCell>
+            </TableRow>
+          ) : error ? (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center text-red-500">
+                Error: {error}
+              </TableCell>
+            </TableRow>
+          ) : data?.data.content.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center">
+                <div className="text-center flex flex-col items-center gap-4 m-3 p-3">
+                  <Empty />
+                  <p className="text-muted-foreground">No audit logs found</p>
+                </div>
+              </TableCell>
+            </TableRow>
+          ) : (
+            data?.data.content.map((item, index) => (
+              <TableRow key={item.id}>
+                <TableCell>{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
+                <TableCell>{item.userName}</TableCell>
+                <TableCell>{item.userRole}</TableCell>
+                <TableCell>{item.merchantName || "N/A"}</TableCell>
+                <TableCell>{item.event}</TableCell>
                 <TableCell>
-                  <span className="flex items-center">
-                    <span
-                      className="w-2 h-2 rounded-full mr-2"
-                      style={{ backgroundColor: log.status === "Succeeded" ? "#4CAF50" : "#FF4444" }}
-                    />
-                    <span style={{ color: log.status === "Succeeded" ? "#4CAF50" : "#FF4444" }}>
-                      {log.status}
-                    </span>
-                  </span>
+                  {item.description || item.event} 
+                  {item.deleted ? "(Deleted)" : item.userIpAddress ? "(IP: " + item.userIpAddress + ")" : ""}
                 </TableCell>
-                <TableCell>{log.timestamp}</TableCell>
+                <TableCell>
+                  {new Date(item.createdAt).toLocaleString("en-US", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -207,10 +322,10 @@ export default function AuditTrailTable() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => setSelectedLog(log)}>
-                      <Eye/>  View
+                      <DropdownMenuItem onClick={() => setSelectedLog(item)}>
+                        <Eye/> View
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => console.log("Export", log.sN)}>
+                      <DropdownMenuItem onClick={() => handleExportDetails(item)}>
                         <Download/> Export Details
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -218,24 +333,16 @@ export default function AuditTrailTable() {
                 </TableCell>
               </TableRow>
             ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={7}>
-                <div className="text-center flex flex-col items-center gap-4 m-3 p-3">
-                  <Empty />
-                  <p className="text-muted-foreground">No audit logs found</p>
-                </div>
-              </TableCell>
-            </TableRow>
           )}
         </TableBody>
       </Table>
+      
       <AuditTrailDetailsModal
         isOpen={!!selectedLog}
         onClose={() => setSelectedLog(null)}
         log={selectedLog}
         setSelectedLog={setSelectedLog}
-        logs={auditData}
+        logs={data?.data.content || []}
       />
     </div>
   );
