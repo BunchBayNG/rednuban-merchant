@@ -27,16 +27,6 @@ export default function AuditPage() {
     { label: "Action", value: "action" },
   ];
 
-  const handleExport = (data: {
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Export data:", data);
-    // Placeholder: Integrate with backend to export data as CSV or Excel
-  };
-
   return (
     <div className="min-h-screen mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="flex justify-between items-center mb-6">
@@ -84,7 +74,7 @@ export default function AuditPage() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        onExport={handleExport}
+       endpointPrefix="api-logs"
         fieldOptions={fieldOptions}
       />
     </div>
