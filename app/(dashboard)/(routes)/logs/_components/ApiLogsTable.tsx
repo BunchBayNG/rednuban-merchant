@@ -28,10 +28,40 @@ import {
 import { Filter, Search, ChevronLeft, ChevronRight, CalendarIcon, Download, Eye } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@radix-ui/react-popover";
 import { Calendar } from "@/components/ui/calendar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BsThreeDots } from "react-icons/bs";
-import { apiLogsData } from "@/lib/mockData";
 import ApiLogDetailsModal from "./ApiLogDetailsModal";
+import Empty from "@/components/svg Icons/Empty";
+
+interface ApiLog {
+  sN: number;
+  logId: string;
+  merchantCode: string;
+  requestTimestamp: string;
+  responseTimestamp: string;
+  service: string;
+  responseStatus: number;
+  timestamp: string;
+  user: string;
+  email: string;
+  transactionReference: string;
+  customerReference: string;
+  clientIP: string;
+  requestPayload: string;
+  responseBody: string;
+}
+
+interface ApiResponse {
+  status: boolean;
+  data: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any 
+    content: any[];
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    number: number;
+  };
+}
 
 export function ApiLogsTable() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,65 +73,135 @@ export function ApiLogsTable() {
     sortBy: "default",
   });
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [selectedLog, setSelectedLog] = useState<{
-    sN: number;
-    logId: string;
-    merchantCode: string;
-    requestTimestamp: string;
-    responseTimestamp: string;
-    service: string;
-    responseStatus: number;
-    timestamp: string;
-    user: string;
-    email: string;
-    transactionReference: string;
-    customerReference: string;
-    clientIP: string;
-    requestPayload: string;
-    responseBody: string;
-  } | null>(null);
+  const [selectedLog, setSelectedLog] = useState<ApiLog | null>(null);
+  const [apiLogsData, setApiLogsData] = useState<ApiLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const itemsPerPage = 10;
-  const totalItems = apiLogsData.length;
 
-  const filteredData = apiLogsData.filter((item) => {
-    const matchesSearch = item.merchantCode.includes(searchTerm) || item.logId.includes(searchTerm) || item.user.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDate =
-      (!filter.fromDate || new Date(item.timestamp) >= filter.fromDate) &&
-      (!filter.toDate || new Date(item.timestamp) <= filter.toDate);
-    const matchesStatus =
-      filter.status === "All" ||
-      (filter.status === "200s" && item.responseStatus >= 200 && item.responseStatus < 300) ||
-      (filter.status === "400s" && item.responseStatus >= 400 && item.responseStatus < 500) ||
-      (filter.status === "500s" && item.responseStatus >= 500 && item.responseStatus < 600);
-    return matchesSearch && matchesDate && matchesStatus;
-  });
+  // Fetch API logs data
+  const fetchApiLogs = async (page: number = currentPage) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const queryParams = new URLSearchParams({
+        page: (page - 1).toString(),
+        size: itemsPerPage.toString(),
+        sortBy: filter.sortBy !== "default" ? getSortField(filter.sortBy) : "createdAt",
+        sortOrder: filter.sortBy !== "default" ? getSortOrder(filter.sortBy) : "DESC",
+        search: searchTerm || "",
+        startDate: filter.fromDate ? filter.fromDate.toISOString().split('T')[0] : "",
+        endDate: filter.toDate ? filter.toDate.toISOString().split('T')[0] : "",
+        status: filter.status !== "All" ? getStatusFilter(filter.status) : "",
+      });
 
-  const sortedData = [...filteredData].sort((a, b) => {
-    switch (filter.sortBy) {
-      case "merchant-newest":
-        return b.merchantCode.localeCompare(a.merchantCode);
-      case "merchant-oldest":
-        return a.merchantCode.localeCompare(b.merchantCode);
-      case "request-newest":
-        return new Date(b.requestTimestamp).getTime() - new Date(a.requestTimestamp).getTime();
-      case "request-oldest":
-        return new Date(a.requestTimestamp).getTime() - new Date(b.requestTimestamp).getTime();
-      case "status-low-high":
-        return a.responseStatus - b.responseStatus;
-      case "status-high-low":
-        return b.responseStatus - a.responseStatus;
-      default:
-        return 0;
+      // Remove empty parameters
+      Array.from(queryParams.entries()).forEach(([key, value]) => {
+        if (!value) queryParams.delete(key);
+      });
+
+      const response = await fetch(`/api/reports/api-logs?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch API logs');
+      }
+
+      const data: ApiResponse = await response.json();
+      
+      if (data.status && data.data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any 
+        const transformedData = data.data.content.map((item: any, index: number) => ({
+          sN: (page - 1) * itemsPerPage + index + 1,
+          logId: item.id || item.logId || `log-${index}`,
+          merchantCode: item.merchantOrgId || item.merchantCode || "N/A",
+          requestTimestamp: item.requestTimestamp || item.createdAt || new Date().toISOString(),
+          responseTimestamp: item.responseTimestamp || item.updatedAt || new Date().toISOString(),
+          service: item.service || item.endpoint || "Unknown",
+          responseStatus: item.responseStatus || item.statusCode || 200,
+          timestamp: item.timestamp || item.createdAt || new Date().toISOString(),
+          user: item.user || item.userId || "Unknown User",
+          email: item.email || "unknown@example.com",
+          transactionReference: item.transactionReference || item.transactionId || "N/A",
+          customerReference: item.customerReference || item.customerId || "N/A",
+          clientIP: item.clientIP || item.ipAddress || "0.0.0.0",
+          requestPayload: item.requestPayload || item.requestBody || "{}",
+          responseBody: item.responseBody || item.response || "{}",
+        }));
+        
+        setApiLogsData(transformedData);
+        setTotalItems(data.data.totalElements || transformedData.length);
+        setTotalPages(data.data.totalPages || Math.ceil(transformedData.length / itemsPerPage));
+      } else {
+        throw new Error('Invalid API response format');
+      }
+    } catch (err) {
+      console.error('Error fetching API logs:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch API logs');
+      setApiLogsData([]);
+      setTotalItems(0);
+      setTotalPages(0);
+    } finally {
+      setLoading(false);
     }
-  });
+  };
 
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedData = sortedData.slice(startIndex, endIndex);
+  // Helper functions to map frontend filters to API parameters
+  const getSortField = (sortBy: string): string => {
+    switch (sortBy) {
+      case "merchant-newest":
+      case "merchant-oldest":
+        return "merchantOrgId";
+      case "request-newest":
+      case "request-oldest":
+        return "createdAt";
+      case "status-low-high":
+      case "status-high-low":
+        return "responseStatus";
+      default:
+        return "createdAt";
+    }
+  };
 
+  const getSortOrder = (sortBy: string): string => {
+    switch (sortBy) {
+      case "merchant-newest":
+      case "request-newest":
+      case "status-high-low":
+        return "DESC";
+      case "merchant-oldest":
+      case "request-oldest":
+      case "status-low-high":
+        return "ASC";
+      default:
+        return "DESC";
+    }
+  };
+
+  const getStatusFilter = (status: string): string => {
+    switch (status) {
+      case "200s":
+        return "200";
+      case "400s":
+        return "400";
+      case "500s":
+        return "500";
+      default:
+        return "";
+    }
+  };
+
+  // Fetch data when component mounts or filters change
+  useEffect(() => {
+    fetchApiLogs(1); // Reset to first page when filters change
+  }, [searchTerm, filter]);
+
+  // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    fetchApiLogs(page);
   };
 
   const getPageNumbers = () => {
@@ -121,7 +221,14 @@ export function ApiLogsTable() {
   const handleResetDate = () => setFilter((prev) => ({ ...prev, fromDate: undefined, toDate: undefined }));
   const handleResetStatus = () => setFilter((prev) => ({ ...prev, status: "All" }));
   const handleResetSort = () => setFilter((prev) => ({ ...prev, sortBy: "default" }));
-  const handleResetAll = () => setFilter({ fromDate: undefined, toDate: undefined, status: "All", sortBy: "default" });
+  const handleResetAll = () => {
+    setFilter({ fromDate: undefined, toDate: undefined, status: "All", sortBy: "default" });
+    setSearchTerm("");
+  };
+
+  const handleApplyFilters = () => {
+    fetchApiLogs(1);
+  };
 
   function DatePicker({ id, date, onSelect, placeholder }: { id: string; date: Date | undefined; onSelect: (date: Date | undefined) => void; placeholder: string }) {
     const [open, setOpen] = useState(false);
@@ -160,29 +267,45 @@ export function ApiLogsTable() {
     );
   }
 
-  const handleViewLog = (log: {
-    sN: number;
-    logId: string;
-    merchantCode: string;
-    requestTimestamp: string;
-    responseTimestamp: string;
-    service: string;
-    responseStatus: number;
-    timestamp: string;
-    user: string;
-    email: string;
-    transactionReference: string;
-    customerReference: string;
-    clientIP: string;
-    requestPayload: string;
-    responseBody: string;
-  }) => {
+  const handleViewLog = (log: ApiLog) => {
     setSelectedLog(log);
     setIsDetailsModalOpen(true);
   };
 
+  const handleDownloadLog = async (log: ApiLog) => {
+    try {
+      // Implement download functionality here
+      console.log("Downloading log:", log.logId);
+      // You can create a blob and download it, or make an API call to export
+    } catch (error) {
+      console.error("Error downloading log:", error);
+    }
+  };
+
   return (
     <div className="w-full relative">
+      {/* Loading State */}
+      {loading && (
+        <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
+          <div className="text-lg">Loading...</div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="ml-4"
+            onClick={() => fetchApiLogs()}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4 space-x-4">
         <div className="flex items-center space-x-4">
           <DropdownMenu>
@@ -279,7 +402,7 @@ export function ApiLogsTable() {
                   <Button variant="outline" onClick={handleResetAll}>
                     Reset All
                   </Button>
-                  <Button className="bg-red-500 text-white hover:bg-red-600" onClick={() => {}}>
+                  <Button className="bg-red-500 text-white hover:bg-red-600" onClick={handleApplyFilters}>
                     Apply Now
                   </Button>
                 </div>
@@ -301,7 +424,7 @@ export function ApiLogsTable() {
             variant="outline"
             size="icon"
             onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
+            disabled={currentPage === 1 || loading}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -314,7 +437,7 @@ export function ApiLogsTable() {
                   variant={currentPage === page ? "default" : "outline"}
                   size="sm"
                   onClick={() => handlePageChange(Number(page))}
-                  disabled={page === "..." || page === currentPage}
+                  disabled={page === "..." || page === currentPage || loading}
                 >
                   {page}
                 </Button>
@@ -325,7 +448,7 @@ export function ApiLogsTable() {
             variant="outline"
             size="icon"
             onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
+            disabled={currentPage === totalPages || loading}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -333,6 +456,7 @@ export function ApiLogsTable() {
           <Select
             value={currentPage.toString()}
             onValueChange={(value) => handlePageChange(parseInt(value))}
+            disabled={loading}
           >
             <SelectTrigger className="w-[80px]">
               <SelectValue placeholder={currentPage.toString()} />
@@ -362,52 +486,67 @@ export function ApiLogsTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedData.map((item) => (
-              <TableRow key={item.sN}>
-                <TableCell>{item.sN}</TableCell>
-                <TableCell>{item.merchantCode}</TableCell>
-                <TableCell>{item.requestTimestamp}</TableCell>
-                <TableCell>{item.responseTimestamp}</TableCell>
-                <TableCell>{item.service}</TableCell>
-                <TableCell>
-                  <span className="flex items-center">
-                    <span
-                      className="w-2 h-2 rounded-full mr-2"
-                      style={{
-                        backgroundColor:
-                          item.responseStatus >= 200 && item.responseStatus < 300 ? "#4CAF50" : // 200s (green)
-                          item.responseStatus >= 400 && item.responseStatus < 500 ? "#FF8C00" : // 400s (orange)
-                          item.responseStatus >= 500 && item.responseStatus < 600 ? "#FF4444" : "#000000", // 500s (red)
-                      }}
-                    />
-                    <span
-                      style={{
-                        color:
-                          item.responseStatus >= 200 && item.responseStatus < 300 ? "#4CAF50" : // 200s (green)
-                          item.responseStatus >= 400 && item.responseStatus < 500 ? "#FF8C00" : // 400s (orange)
-                          item.responseStatus >= 500 && item.responseStatus < 600 ? "#FF4444" : "#000000", // 500s (red)
-                      }}
-                    >
-                      {item.responseStatus}
+            {apiLogsData.length > 0 ? (
+              apiLogsData.map((item) => (
+                <TableRow key={item.logId}>
+                  <TableCell>{item.sN}</TableCell>
+                  <TableCell>{item.merchantCode}</TableCell>
+                  <TableCell>{new Date(item.requestTimestamp).toLocaleString()}</TableCell>
+                  <TableCell>{new Date(item.responseTimestamp).toLocaleString()}</TableCell>
+                  <TableCell>{item.service}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center">
+                      <span
+                        className="w-2 h-2 rounded-full mr-2"
+                        style={{
+                          backgroundColor:
+                            item.responseStatus >= 200 && item.responseStatus < 300 ? "#4CAF50" : // 200s (green)
+                            item.responseStatus >= 400 && item.responseStatus < 500 ? "#FF8C00" : // 400s (orange)
+                            item.responseStatus >= 500 && item.responseStatus < 600 ? "#FF4444" : "#000000", // 500s (red)
+                        }}
+                      />
+                      <span
+                        style={{
+                          color:
+                            item.responseStatus >= 200 && item.responseStatus < 300 ? "#4CAF50" : // 200s (green)
+                            item.responseStatus >= 400 && item.responseStatus < 500 ? "#FF8C00" : // 400s (orange)
+                            item.responseStatus >= 500 && item.responseStatus < 600 ? "#FF4444" : "#000000", // 500s (red)
+                        }}
+                      >
+                        {item.responseStatus}
+                      </span>
                     </span>
-                  </span>
-                </TableCell>
-                <TableCell>{item.timestamp}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <BsThreeDots className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => handleViewLog(item)}><Eye /> View</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => console.log("Download", item.sN)}><Download /> Download</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  </TableCell>
+                  <TableCell>{new Date(item.timestamp).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <BsThreeDots className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleViewLog(item)}>
+                          <Eye className="w-4 h-4 mr-2" /> View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownloadLog(item)}>
+                          <Download className="w-4 h-4 mr-2" /> Download
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8">
+                <div className="text-center flex flex-col items-center gap-4 m-3 p-3">
+                  <Empty />
+                  <p className="text-muted-foreground">No Api Logs found</p>
+                </div>
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
