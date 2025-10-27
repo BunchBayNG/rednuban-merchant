@@ -31,13 +31,12 @@ function APIConfiguration() {
   });
 
   const [apiKeys, setApiKeys] = useState<APIKeys>({
-    vasPublicKey: "sk_test_1234567890abcdefghijklmnopqrstuvwxyz",
-    merchantPublicKey: "pk_test_1234567890abcdefghijklmnopqrstuvwxyz",
-    merchantPrivateKey: "sk_live_1234567890abcdefghijklmnopqrstuvwxyz",
+    vasPublicKey: "vas_pk_test_placeholder_12345",
+    merchantPublicKey: "merchant_pk_test_placeholder_12345",
+    merchantPrivateKey: "merchant_sk_test_placeholder_12345",
     webhookUrl: "https://virtual-account-service-callback.redpay.africa/",
     whitelistIPs: "",
   });
-
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
