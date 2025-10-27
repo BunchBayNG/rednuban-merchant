@@ -31,9 +31,9 @@ function APIConfiguration() {
   });
 
   const [apiKeys, setApiKeys] = useState<APIKeys>({
-    vasPublicKey: process.env.NEXT_PUBLIC_VAS_PUBLIC_KEY || "vas_pk_test_placeholder",
-    merchantPublicKey: process.env.NEXT_PUBLIC_MERCHANT_PUBLIC_KEY || "merchant_pk_test_placeholder",
-    merchantPrivateKey: process.env.NEXT_PUBLIC_MERCHANT_PRIVATE_KEY || "merchant_sk_test_placeholder",
+    vasPublicKey: "vas_public_key_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    merchantPublicKey: "merchant_public_key_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    merchantPrivateKey: "merchant_private_key_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     webhookUrl: "https://virtual-account-service-callback.redpay.africa/",
     whitelistIPs: "",
   });
