@@ -65,15 +65,7 @@ export default function CustomerPage() {
     { label: "Action", value: "action" },
   ];
 
-  const handleExport = (data: {
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Export data:", data);
-    // Placeholder: Integrate with backend to export data as CSV or Excel
-  };
+ 
 
   return (
     <div className="min-h-screen mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -112,7 +104,7 @@ export default function CustomerPage() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        onExport={handleExport}
+         endpointPrefix="customers"
         fieldOptions={fieldOptions}
       />
     </div>

@@ -25,16 +25,35 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Filter, Search, ChevronLeft, ChevronRight, Download, Eye } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { BsThreeDots } from "react-icons/bs";
 import StaffDetailsModal from "./StaffDetailsModal";
 import Empty from "@/components/svg Icons/Empty";
-import { staffData } from "@/lib/mockData";
+import Loading from "@/components/Loading";
 
+// API Response Interface
+interface StaffResponse {
+  statusCode: number;
+  status: boolean;
+  message: string;
+  data: Staff[];
+}
+
+// Staff Interface based on API docs
 interface Staff {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  userType: string;
+  phoneNumber: string;
+  logoUrl: string;
+  enabled: boolean;
+  invitedUser: boolean;
+  // Additional fields for table display
   sN: number;
   fullName: string;
-  email: string;
   role: string;
   status: string;
   lastLogin: string;
@@ -48,25 +67,71 @@ export default function StaffTable() {
   const pageSize = 10;
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [, setTotalElements] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
 
-  const filteredStaff = useMemo(() => {
-    return staffData.filter((staff) => {
-      const matchesSearch =
-        staff.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        staff.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        staff.role.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus ? staff.status.toLowerCase() === filterStatus.toLowerCase() : true;
-      return matchesSearch && matchesStatus;
-    });
-  }, [searchTerm, filterStatus]);
+  // Fetch staff data from API
+  const fetchStaff = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // You'll need to get the merchantAdminId from your auth context or props
+      const merchantAdminId = "your-merchant-admin-id"; // Replace with actual ID
+      
+      const params = new URLSearchParams({
+        merchantAdminId,
+        page: currentPage.toString(),
+        size: pageSize.toString(),
+        search: searchTerm,
+        status: filterStatus,
+      }).toString();
 
-  const paginatedStaff = useMemo(() => {
-    const start = currentPage * pageSize;
-    return filteredStaff.slice(start, start + pageSize);
-  }, [filteredStaff, currentPage]);
+      console.log("Fetching staff with params:", params);
+      const res = await fetch(`/api/staff?${params}`);
+      const data: StaffResponse = await res.json();
+      console.log("Staff API Response:", JSON.stringify(data, null, 2));
 
-  const totalPages = Math.ceil(filteredStaff.length / pageSize);
+      if (res.ok && data.status) {
+        // Map API response to table format
+        const mappedStaff = data.data.map((staffMember, index) => ({
+          ...staffMember,
+          sN: currentPage * pageSize + index + 1,
+          fullName: `${staffMember.firstName} ${staffMember.lastName}`,
+          role: staffMember.userType,
+          status: staffMember.enabled ? "Enabled" : "Disabled",
+          // These fields might need to come from a different endpoint
+          lastLogin: "2024-01-01 10:00 AM", // Placeholder - update with actual data
+          ipAddress: "192.168.1.1", // Placeholder
+          deviceInfo: "Chrome, Windows", // Placeholder
+          lastUpdated: new Date().toLocaleDateString(), // Placeholder
+        }));
+
+        setStaff(mappedStaff);
+        // If API supports pagination, use these:
+        // setTotalPages(data.data.totalPages || 1);
+        // setTotalElements(data.data.totalElements || mappedStaff.length);
+        
+        // For now, assuming simple pagination
+        setTotalPages(Math.ceil(mappedStaff.length / pageSize));
+        setTotalElements(mappedStaff.length);
+      } else {
+        setError(data.message || `Failed to fetch staff (Status: ${res.status})`);
+      }
+    } catch (error) {
+      console.error("Error fetching staff:", error);
+      setError("Failed to fetch staff due to network or server error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStaff();
+  }, [currentPage, searchTerm, filterStatus]);
 
   const getPageNumbers = () => {
     const pages = [];
@@ -84,11 +149,32 @@ export default function StaffTable() {
 
   const getInitials = (name: string) => {
     const names = name.split(" ");
-    return names.length > 1 ? names[0][0] + names[names.length - 1][0] : names[0][0];
+    return names.length > 1 
+      ? names[0][0] + names[names.length - 1][0] 
+      : names[0][0] || "";
+  };
+
+  // Handle enable/disable staff
+  const handleToggleStatus = async (staffId: string, currentStatus: boolean) => {
+    try {
+      // You'll need to implement this API call
+      console.log(`Toggling status for staff ${staffId} from ${currentStatus}`);
+      // await fetch(`/api/v1/users/toggle-status`, {
+      //   method: "POST",
+      //   body: JSON.stringify({ staffId, enabled: !currentStatus }),
+      // });
+      
+      // Refresh data after status change
+      fetchStaff();
+    } catch (error) {
+      console.error("Error toggling staff status:", error);
+    }
   };
 
   return (
     <div className="w-full relative">
+      {error && <div className="text-red-500 text-center my-4">{error}</div>}
+      
       <div className="flex justify-between items-center mb-4 space-x-4">
         <div className="flex items-center space-x-4">
           <DropdownMenu>
@@ -173,6 +259,7 @@ export default function StaffTable() {
           </Select>
         </div>
       </div>
+
       <Table>
         <TableHeader className="bg-[#F5F5F5] dark:bg-background">
           <TableRow>
@@ -186,31 +273,44 @@ export default function StaffTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedStaff.length > 0 ? (
-            paginatedStaff.map((staff) => (
-              <TableRow key={staff.sN}>
-                <TableCell>{staff.sN}</TableCell>
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={7}>
+                <Loading />
+              </TableCell>
+            </TableRow>
+          ) : staff.length > 0 ? (
+            staff.map((staffMember) => (
+              <TableRow key={staffMember.id}>
+                <TableCell>{staffMember.sN}</TableCell>
                 <TableCell className="flex items-center space-x-2">
                   <Avatar>
-                    <AvatarImage src="/images/avatar-placeholder.jpg" alt={staff.fullName} />
-                    <AvatarFallback>{getInitials(staff.fullName)}</AvatarFallback>
+                    <AvatarImage 
+                      src={staffMember.logoUrl || "/images/avatar-placeholder.jpg"} 
+                      alt={staffMember.fullName} 
+                    />
+                    <AvatarFallback>{getInitials(staffMember.fullName)}</AvatarFallback>
                   </Avatar>
-                  <span>{staff.fullName}</span>
+                  <span>{staffMember.fullName}</span>
                 </TableCell>
-                <TableCell>{staff.email}</TableCell>
-                <TableCell>{staff.role}</TableCell>
+                <TableCell>{staffMember.email}</TableCell>
+                <TableCell>{staffMember.role}</TableCell>
                 <TableCell>
                   <span className="flex items-center">
                     <span
                       className="w-2 h-2 rounded-full mr-2"
-                      style={{ backgroundColor: staff.status === "Enabled" ? "#4CAF50" : "#FF4444" }}
+                      style={{ 
+                        backgroundColor: staffMember.status === "Enabled" ? "#4CAF50" : "#FF4444" 
+                      }}
                     />
-                    <span style={{ color: staff.status === "Enabled" ? "#4CAF50" : "#FF4444" }}>
-                      {staff.status}
+                    <span style={{ 
+                      color: staffMember.status === "Enabled" ? "#4CAF50" : "#FF4444" 
+                    }}>
+                      {staffMember.status}
                     </span>
                   </span>
                 </TableCell>
-                <TableCell>{staff.lastLogin}</TableCell>
+                <TableCell>{staffMember.lastLogin}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -219,20 +319,24 @@ export default function StaffTable() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => setSelectedStaff(staff)}>
-                        <Eye /> View
+                      <DropdownMenuItem onClick={() => setSelectedStaff(staffMember)}>
+                        <Eye className="w-4 h-4 mr-2" /> View
                       </DropdownMenuItem>
-                      {staff.status === "Enabled" ? (
-                        <DropdownMenuItem onClick={() => console.log("Disable", staff.sN)}>
-                          <Eye /> Disable
+                      {staffMember.enabled ? (
+                        <DropdownMenuItem 
+                          onClick={() => handleToggleStatus(staffMember.id, true)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" /> Disable
                         </DropdownMenuItem>
                       ) : (
-                        <DropdownMenuItem onClick={() => console.log("Enable", staff.sN)}>
-                          <Eye /> Enable
+                        <DropdownMenuItem 
+                          onClick={() => handleToggleStatus(staffMember.id, false)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" /> Enable
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem onClick={() => console.log("Download", staff.sN)}>
-                        <Download /> Download
+                      <DropdownMenuItem onClick={() => console.log("Download", staffMember.id)}>
+                        <Download className="w-4 h-4 mr-2" /> Download
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -251,12 +355,13 @@ export default function StaffTable() {
           )}
         </TableBody>
       </Table>
+
       <StaffDetailsModal
         isOpen={!!selectedStaff}
         onClose={() => setSelectedStaff(null)}
         staff={selectedStaff}
         setSelectedStaff={setSelectedStaff}
-        staffList={staffData}
+        staffList={staff}
       />
     </div>
   );

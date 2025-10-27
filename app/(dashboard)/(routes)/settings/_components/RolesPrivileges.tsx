@@ -149,29 +149,6 @@ export default function RolesPrivileges() {
     );
   }
 
-  const handleExport = (data: {
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    const exportData = roles
-      .filter((role) => {
-        const fromDate = new Date(data.dateRangeFrom);
-        const toDate = new Date(data.dateRangeTo);
-        const roleDate = new Date(role.createdAt.replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$3-$2-$1"));
-        return (!data.dateRangeFrom || !isNaN(fromDate.getTime()) && roleDate >= fromDate) &&
-               (!data.dateRangeTo || !isNaN(toDate.getTime()) && roleDate <= toDate);
-      })
-      .map((role) =>
-        Object.fromEntries(
-          Object.entries(role).filter(([key]) => data.fields[key])
-        )
-      );
-    console.log("Export data:", { ...data, exportData });
-    setIsExportModalOpen(false);
-  };
-
   const fieldOptions = [
     { label: "S/N", value: "id" },
     { label: "Role Name", value: "name" },
@@ -382,7 +359,7 @@ export default function RolesPrivileges() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        onExport={handleExport}
+         endpointPrefix="roles"
         fieldOptions={fieldOptions}
       />
       <AddRoleModal

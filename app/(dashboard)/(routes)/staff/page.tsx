@@ -5,37 +5,20 @@ import { Button } from '@/components/ui/button'
 import React, { useState } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card';
-import { ExportModal } from '../dashboard/_components/ExportModal';
 // import { StaffsChart } from './_components/StaffsChart'
 import { FiUserPlus } from 'react-icons/fi';
 import StaffTable from './_components/StaffTable';
+import { AddStaffModal } from './_components/AddStaffModal';
 
 
 
 
 export default function StaffPage() {
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false);
+  const [, setRefreshKey] = useState(0);
 
-
-
-  const fieldOptions = [
-    { label: "S/N", value: "sN" },
-    { label: "Full Name", value: "full name" },
-    { label: "vNUBAN", value: "vNUBAN" },
-    { label: "Email", value: "email" },
-    { label: "Role", value: "role" },
-    { label: "Status", value: "status" },
-    { label: "Last Login", value: "last login" },
-  ];
-
-  const handleExport = (data: {
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Export data:", data);
-    // Placeholder: Integrate with backend to export data as CSV or Excel
+  const handleRefreshTable = () => {
+    setRefreshKey((prev) => prev + 1); // Trigger table refresh
   };
 
   return (
@@ -44,7 +27,8 @@ export default function StaffPage() {
         <h1 className="text-sm font-medium">Staff</h1>
 
         <div className="flex items-center space-x-2">
-          <Button variant={"outline"}>Add Staff <FiUserPlus /></Button>
+          <Button variant={"outline"}
+          onClick={() => setIsAddStaffModalOpen(true)}>Add Staff <FiUserPlus /></Button>
           {/* <Button
             onClick={() => setIsExportModalOpen(true)}
             className=" hover:bg-[#A60000]  rounded-md"
@@ -86,12 +70,10 @@ export default function StaffPage() {
           </Card>
         </div>
       </div>
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        onExport={handleExport}
-        fieldOptions={fieldOptions}
-      />
+      <AddStaffModal
+      isOpen={isAddStaffModalOpen}
+      onClose={() => setIsAddStaffModalOpen(false)}
+      onSuccess={handleRefreshTable}/>
     </div>
   )
 }
